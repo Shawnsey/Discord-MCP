@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "discord-server": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "env": {
+        "DISCORD_BOT_TOKEN": "${DISCORD_BOT_TOKEN}",
+        "DISCORD_APPLICATION_ID": "${DISCORD_APPLICATION_ID}",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
