@@ -54,6 +54,10 @@ async def test_all_functionality():
         # Test tools are registered  
         print("\n🔧 Testing Tools Registration...")
         print("✅ Tools should be registered:")
+        print("   - list_guilds")
+        print("   - list_channels")
+        print("   - get_messages")
+        print("   - get_user_info")
         print("   - send_message")
         print("   - send_dm") 
         print("   - read_direct_messages")
@@ -90,12 +94,16 @@ async def test_all_functionality():
         print("   • user://{user_id} - Get user profile information")
         print("   • health://status - Server health and status")
         
-        print("\n🔧 Tools (Write Operations):")
-        print("   • send_message - Send messages to Discord channels")
-        print("   • send_dm - Send direct messages to users")
-        print("   • read_direct_messages - Read DM conversations")
-        print("   • delete_message - Delete messages (with permissions)")
-        print("   • edit_message - Edit messages (bot's own messages)")
+        print("\n🔧 Tools (Operations):")
+        print("   • list_guilds - List accessible Discord servers (read)")
+        print("   • list_channels - List channels in a specific server (read)")
+        print("   • get_messages - Read recent messages from a channel (read)")
+        print("   • get_user_info - Get user profile information (read)")
+        print("   • send_message - Send messages to Discord channels (write)")
+        print("   • send_dm - Send direct messages to users (write)")
+        print("   • read_direct_messages - Read DM conversations (read)")
+        print("   • delete_message - Delete messages (write, with permissions)")
+        print("   • edit_message - Edit messages (write, bot's own messages)")
         
         print("\n🌐 Server Modes:")
         print("   • SSE Mode: python discord_server.py --transport sse --port 8000")
@@ -128,9 +136,10 @@ async def test_tool_signatures():
         mock_server = MagicMock(spec=FastMCP)
         registered_tools = {}
         
-        def tool_decorator():
+        def tool_decorator(name=None, description=None):
             def decorator(func):
-                registered_tools[func.__name__] = func
+                tool_name = name if name else func.__name__
+                registered_tools[tool_name] = func
                 return func
             return decorator
         
@@ -141,6 +150,10 @@ async def test_tool_signatures():
         
         # Check expected tools are registered
         expected_tools = [
+            "list_guilds",
+            "list_channels", 
+            "get_messages",
+            "get_user_info",
             "send_message",
             "send_dm", 
             "read_direct_messages",
@@ -161,6 +174,7 @@ async def test_tool_signatures():
                 
             else:
                 print(f"❌ {tool_name} - NOT FOUND")
+                print(f"   Available tools: {list(registered_tools.keys())}")
                 return False
         
         print(f"✅ All {len(expected_tools)} tools registered successfully")
@@ -168,6 +182,8 @@ async def test_tool_signatures():
         
     except Exception as e:
         print(f"❌ Tool signature test failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 

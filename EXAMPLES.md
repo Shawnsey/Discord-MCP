@@ -100,6 +100,38 @@ print(f"User: {user_info['username']}#{user_info['discriminator']}")
 # }
 ```
 
+### 4. Using Tools for Read Operations
+
+While resources provide direct access to Discord data, tools can also be used for read operations with additional formatting and processing:
+
+```python
+# List all accessible guilds using tool
+guilds_info = await client.call_tool("list_guilds", {})
+print(guilds_info)  # Returns formatted markdown string
+
+# List channels in a guild using tool  
+channels_info = await client.call_tool("list_channels", {
+    "guild_id": "123456789012345678"
+})
+print(channels_info)  # Returns formatted markdown string
+
+# Get messages from a channel using tool
+messages_info = await client.call_tool("get_messages", {
+    "channel_id": "987654321098765432"
+})
+print(messages_info)  # Returns formatted markdown string
+
+# Get user information using tool
+user_info = await client.call_tool("get_user_info", {
+    "user_id": "222222222222222222"
+})
+print(user_info)  # Returns formatted markdown string
+```
+
+**Note**: The difference between resources and tools for read operations:
+- **Resources** (`read_resource`) return raw JSON data for programmatic use
+- **Tools** (`call_tool`) return formatted markdown strings for display/reporting
+
 ## Tool Usage Examples
 
 ### 1. Send Message to Channel
