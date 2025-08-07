@@ -130,25 +130,25 @@
 **Goal**: Implement all Discord service methods with identical behavior
 
 ### 2.1 Guild Operations Implementation
-- [ ] **Implement `get_guilds_formatted()` method**
-  - [ ] Copy and consolidate logic from tools.py and resources.py
-  - [ ] Add try-catch error handling with centralized error management
-  - [ ] Implement guild filtering based on settings
-  - [ ] Add guild details fetching with proper error handling
-  - [ ] Format guild information identically to existing implementation
-  - [ ] Add structured logging for guild operations
-  - [ ] Ensure exact same output format as current implementation
+- [x] **Implement `get_guilds_formatted()` method**
+  - [x] Copy and consolidate logic from tools.py and resources.py
+  - [x] Add try-catch error handling with centralized error management
+  - [x] Implement guild filtering based on settings
+  - [x] Add guild details fetching with proper error handling
+  - [x] Format guild information identically to existing implementation
+  - [x] Add structured logging for guild operations
+  - [x] Ensure exact same output format as current implementation
 
 ### 2.2 Channel Operations Implementation
-- [ ] **Implement `get_channels_formatted(guild_id: str)` method**
-  - [ ] Copy and consolidate logic from tools.py and resources.py
-  - [ ] Add guild permission validation
-  - [ ] Implement guild information fetching with 404 handling
-  - [ ] Add channel filtering based on settings
-  - [ ] Implement channel type categorization (text, voice, categories, etc.)
-  - [ ] Format channel information identically to existing implementation
-  - [ ] Add structured logging for channel operations
-  - [ ] Ensure exact same output format as current implementation
+- [x] **Implement `get_channels_formatted(guild_id: str)` method**
+  - [x] Copy and consolidate logic from tools.py and resources.py
+  - [x] Add guild permission validation
+  - [x] Implement guild information fetching with 404 handling
+  - [x] Add channel filtering based on settings
+  - [x] Implement channel type categorization (text, voice, categories, etc.)
+  - [x] Format channel information identically to existing implementation
+  - [x] Add structured logging for channel operations
+  - [x] Ensure exact same output format as current implementation
 
 ### 2.3 Message Operations Implementation
 - [ ] **Implement `get_messages_formatted(channel_id: str, limit: int = 50)` method**
