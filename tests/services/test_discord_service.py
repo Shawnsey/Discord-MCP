@@ -189,16 +189,23 @@ class TestDiscordService:
     # Test that service methods are not yet implemented (will be implemented in Milestone 2)
 
     @pytest.mark.asyncio
-    async def test_get_guilds_formatted_success(self, discord_service, mock_discord_client, mock_settings, sample_guild_data, sample_guild_details):
+    async def test_get_guilds_formatted_success(
+        self,
+        discord_service,
+        mock_discord_client,
+        mock_settings,
+        sample_guild_data,
+        sample_guild_details,
+    ):
         """Test successful guild list formatting."""
         # Setup mocks
         mock_discord_client.get_user_guilds.return_value = sample_guild_data
         mock_discord_client.get_guild.return_value = sample_guild_details
         mock_settings.get_allowed_guilds_set.return_value = None
-        
+
         # Execute
         result = await discord_service.get_guilds_formatted()
-        
+
         # Verify
         assert "# Discord Guilds" in result
         assert "Test Guild 1" in result
@@ -208,16 +215,23 @@ class TestDiscordService:
         mock_discord_client.get_user_guilds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_guilds_formatted_with_filter(self, discord_service, mock_discord_client, mock_settings, sample_guild_data, sample_guild_details):
+    async def test_get_guilds_formatted_with_filter(
+        self,
+        discord_service,
+        mock_discord_client,
+        mock_settings,
+        sample_guild_data,
+        sample_guild_details,
+    ):
         """Test guild list formatting with allowed guilds filter."""
         # Setup mocks
         mock_discord_client.get_user_guilds.return_value = sample_guild_data
         mock_discord_client.get_guild.return_value = sample_guild_details
         mock_settings.get_allowed_guilds_set.return_value = {"123456789012345678"}
-        
+
         # Execute
         result = await discord_service.get_guilds_formatted()
-        
+
         # Verify
         assert "# Discord Guilds" in result
         assert "Test Guild 1" in result
@@ -225,49 +239,60 @@ class TestDiscordService:
         mock_discord_client.get_user_guilds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_guilds_formatted_no_guilds(self, discord_service, mock_discord_client, mock_settings):
+    async def test_get_guilds_formatted_no_guilds(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
         """Test guild list formatting when no guilds are found."""
         # Setup mocks
         mock_discord_client.get_user_guilds.return_value = []
         mock_settings.get_allowed_guilds_set.return_value = None
-        
+
         # Execute
         result = await discord_service.get_guilds_formatted()
-        
+
         # Verify
-        assert result == "# Discord Guilds\n\nNo guilds found or bot has no access to any guilds."
+        assert (
+            result
+            == "# Discord Guilds\n\nNo guilds found or bot has no access to any guilds."
+        )
         mock_discord_client.get_user_guilds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_guilds_formatted_api_error(self, discord_service, mock_discord_client, mock_settings):
+    async def test_get_guilds_formatted_api_error(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
         """Test guild list formatting with Discord API error."""
         # Setup mocks
-        mock_discord_client.get_user_guilds.side_effect = DiscordAPIError("API Error", 500)
+        mock_discord_client.get_user_guilds.side_effect = DiscordAPIError(
+            "API Error", 500
+        )
         mock_settings.get_allowed_guilds_set.return_value = None
-        
+
         # Execute
         result = await discord_service.get_guilds_formatted()
-        
+
         # Verify
         assert result.startswith("# Error\n\n")
         assert "Discord API error while fetching guilds" in result
         mock_discord_client.get_user_guilds.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_success(self, discord_service, mock_discord_client, mock_settings, sample_channel_data):
+    async def test_get_channels_formatted_success(
+        self, discord_service, mock_discord_client, mock_settings, sample_channel_data
+    ):
         """Test successful channel list formatting."""
         guild_id = "123456789012345678"
         guild_data = {"name": "Test Guild"}
-        
+
         # Setup mocks
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = guild_data
         mock_discord_client.get_guild_channels.return_value = sample_channel_data
         mock_settings.get_allowed_channels_set.return_value = None
-        
+
         # Execute
         result = await discord_service.get_channels_formatted(guild_id)
-        
+
         # Verify
         assert "# Channels in Test Guild" in result
         assert "general" in result
@@ -279,50 +304,61 @@ class TestDiscordService:
         mock_discord_client.get_guild_channels.assert_called_once_with(guild_id)
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_guild_not_allowed(self, discord_service, mock_settings):
+    async def test_get_channels_formatted_guild_not_allowed(
+        self, discord_service, mock_settings
+    ):
         """Test channel list formatting when guild is not allowed."""
         guild_id = "123456789012345678"
-        
+
         # Setup mocks
         mock_settings.is_guild_allowed.return_value = False
-        
+
         # Execute
         result = await discord_service.get_channels_formatted(guild_id)
-        
+
         # Verify
         expected = f"# Access Denied\n\nAccess to guild `{guild_id}` is not permitted."
         assert result == expected
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_guild_not_found(self, discord_service, mock_discord_client, mock_settings):
+    async def test_get_channels_formatted_guild_not_found(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
         """Test channel list formatting when guild is not found."""
         guild_id = "999999999999999999"
-        
+
         # Setup mocks
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Not Found", 404)
-        
+
         # Execute
         result = await discord_service.get_channels_formatted(guild_id)
-        
+
         # Verify
-        assert result == f"# Guild Not Found\n\nGuild with ID `{guild_id}` was not found or bot has no access."
+        assert (
+            result
+            == f"# Guild Not Found\n\nGuild with ID `{guild_id}` was not found or bot has no access."
+        )
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_with_filter(self, discord_service, mock_discord_client, mock_settings, sample_channel_data):
+    async def test_get_channels_formatted_with_filter(
+        self, discord_service, mock_discord_client, mock_settings, sample_channel_data
+    ):
         """Test channel list formatting with channel filter."""
         guild_id = "123456789012345678"
         guild_data = {"name": "Test Guild"}
-        
+
         # Setup mocks
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = guild_data
         mock_discord_client.get_guild_channels.return_value = sample_channel_data
-        mock_settings.get_allowed_channels_set.return_value = {"111111111111111111"}  # Only allow general channel
-        
+        mock_settings.get_allowed_channels_set.return_value = {
+            "111111111111111111"
+        }  # Only allow general channel
+
         # Execute
         result = await discord_service.get_channels_formatted(guild_id)
-        
+
         # Verify
         assert "# Channels in Test Guild" in result
         assert "general" in result
@@ -330,45 +366,341 @@ class TestDiscordService:
         assert "announcements" not in result  # Should be filtered out
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_no_channels(self, discord_service, mock_discord_client, mock_settings):
+    async def test_get_channels_formatted_no_channels(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
         """Test channel list formatting when no channels are found."""
         guild_id = "123456789012345678"
         guild_data = {"name": "Test Guild"}
-        
+
         # Setup mocks
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = guild_data
         mock_discord_client.get_guild_channels.return_value = []
         mock_settings.get_allowed_channels_set.return_value = None
-        
+
         # Execute
         result = await discord_service.get_channels_formatted(guild_id)
-        
+
         # Verify
-        assert result == "# Channels in Test Guild\n\nNo accessible channels found in this guild."
+        assert (
+            result
+            == "# Channels in Test Guild\n\nNo accessible channels found in this guild."
+        )
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_api_error(self, discord_service, mock_discord_client, mock_settings):
+    async def test_get_channels_formatted_api_error(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
         """Test channel list formatting with Discord API error."""
         guild_id = "123456789012345678"
-        
+
         # Setup mocks
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
-        mock_discord_client.get_guild_channels.side_effect = DiscordAPIError("API Error", 500)
-        
+        mock_discord_client.get_guild_channels.side_effect = DiscordAPIError(
+            "API Error", 500
+        )
+
         # Execute
         result = await discord_service.get_channels_formatted(guild_id)
-        
+
         # Verify
         assert result.startswith("# Error\n\n")
         assert "Discord API error while fetching channels" in result
 
+    # Tests for get_messages_formatted method
     @pytest.mark.asyncio
-    async def test_get_messages_formatted_not_implemented(self, discord_service):
-        """Test that get_messages_formatted raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.get_messages_formatted("111111111111111111")
+    async def test_get_messages_formatted_success(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test successful message retrieval and formatting."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+        mock_settings.is_guild_allowed.return_value = True
+
+        mock_channel = {
+            "id": channel_id,
+            "name": "general",
+            "guild_id": "987654321098765432",
+        }
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_messages = [
+            {
+                "id": "msg1",
+                "author": {"username": "user1", "id": "user1_id"},
+                "timestamp": "2023-01-01T12:00:00Z",
+                "content": "Hello world!",
+                "attachments": [],
+                "embeds": [],
+            },
+            {
+                "id": "msg2",
+                "author": {"username": "user2", "id": "user2_id"},
+                "timestamp": "2023-01-01T12:01:00Z",
+                "content": "How are you?",
+                "attachments": [{"filename": "image.png"}],
+                "embeds": [{"title": "Test embed"}],
+            },
+        ]
+        mock_discord_client.get_channel_messages.return_value = mock_messages
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Messages in #general" in result
+        assert "Showing 2 recent message(s)" in result
+        assert "## Message from user1" in result
+        assert "## Message from user2" in result
+        assert "Hello world!" in result
+        assert "How are you?" in result
+        assert "2023-01-01 12:00:00 UTC" in result
+        assert "2023-01-01 12:01:00 UTC" in result
+        assert "**Attachments**: 1 file(s)" in result
+        assert "image.png" in result
+        assert "**Embeds**: 1 embed(s)" in result
+
+        mock_discord_client.get_channel.assert_called_once_with(channel_id)
+        mock_discord_client.get_channel_messages.assert_called_once_with(
+            channel_id, limit=50
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_with_custom_limit(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test message retrieval with custom limit."""
+        # Setup
+        channel_id = "123456789012345678"
+        custom_limit = 25
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+        mock_discord_client.get_channel_messages.return_value = []
+
+        # Execute
+        await discord_service.get_messages_formatted(channel_id, limit=custom_limit)
+
+        # Verify
+        mock_discord_client.get_channel_messages.assert_called_once_with(
+            channel_id, limit=custom_limit
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_channel_not_allowed(
+        self, discord_service, mock_settings
+    ):
+        """Test access denied for disallowed channel."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = False
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Access Denied" in result
+        assert f"Access to channel `{channel_id}` is not permitted" in result
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_guild_not_allowed(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test access denied for disallowed guild."""
+        # Setup
+        channel_id = "123456789012345678"
+        guild_id = "987654321098765432"
+        mock_settings.is_channel_allowed.return_value = True
+        mock_settings.is_guild_allowed.return_value = False
+
+        mock_channel = {"id": channel_id, "name": "general", "guild_id": guild_id}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Access Denied" in result
+        assert (
+            f"Access to guild containing channel `{channel_id}` is not permitted"
+            in result
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_channel_not_found(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test channel not found error handling."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_discord_client.get_channel.side_effect = DiscordAPIError("Not Found", 404)
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Channel Not Found" in result
+        assert (
+            f"Channel with ID `{channel_id}` was not found or bot has no access"
+            in result
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_no_messages(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test handling of empty message list."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "empty-channel"}
+        mock_discord_client.get_channel.return_value = mock_channel
+        mock_discord_client.get_channel_messages.return_value = []
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Messages in #empty-channel" in result
+        assert "No messages found in this channel" in result
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_message_without_content(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test formatting of message without text content."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_messages = [
+            {
+                "id": "msg1",
+                "author": {"username": "user1", "id": "user1_id"},
+                "timestamp": "2023-01-01T12:00:00Z",
+                "content": "",  # Empty content
+                "attachments": [],
+                "embeds": [],
+            }
+        ]
+        mock_discord_client.get_channel_messages.return_value = mock_messages
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "*(No text content)*" in result
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_invalid_timestamp(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test handling of invalid timestamp format."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_messages = [
+            {
+                "id": "msg1",
+                "author": {"username": "user1", "id": "user1_id"},
+                "timestamp": "invalid-timestamp",
+                "content": "Test message",
+                "attachments": [],
+                "embeds": [],
+            }
+        ]
+        mock_discord_client.get_channel_messages.return_value = mock_messages
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "invalid-timestamp" in result  # Should fall back to original timestamp
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_missing_author_info(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test handling of missing author information."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_messages = [
+            {
+                "id": "msg1",
+                "author": {},  # Missing username and id
+                "timestamp": "2023-01-01T12:00:00Z",
+                "content": "Test message",
+                "attachments": [],
+                "embeds": [],
+            }
+        ]
+        mock_discord_client.get_channel_messages.return_value = mock_messages
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "Unknown User" in result
+        assert "Unknown" in result
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_discord_api_error(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test Discord API error handling during message fetch."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+        mock_discord_client.get_channel_messages.side_effect = DiscordAPIError(
+            "Server Error", 500
+        )
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Error" in result
+        assert "Discord API error while fetching messages" in result
+
+    @pytest.mark.asyncio
+    async def test_get_messages_formatted_unexpected_error(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test unexpected error handling."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_discord_client.get_channel.side_effect = ValueError("Unexpected error")
+
+        # Execute
+        result = await discord_service.get_messages_formatted(channel_id)
+
+        # Verify
+        assert "# Error" in result
+        assert "Unexpected error while fetching messages" in result
 
     @pytest.mark.asyncio
     async def test_get_user_info_formatted_not_implemented(self, discord_service):
