@@ -11,11 +11,15 @@ A comprehensive Model Context Protocol (MCP) server that enables AI assistants t
 - **User Information** (`user://{user_id}`) - Get detailed user profile information
 - **Health Check** (`health://status`) - Server status and configuration information
 
-### Tools (Write Operations)
-- **Send Message** (`send_message`) - Send messages to Discord channels with reply support
-- **Send Direct Message** (`send_dm`) - Send private messages to users
-- **Read Direct Messages** (`read_direct_messages`) - Read DM conversations with specific users
-- **Message Management** - Delete (`delete_message`) and edit (`edit_message`) messages with permissions
+### Tools (Operations)
+- **List Guilds** (`list_guilds`) - List all accessible Discord servers (read)
+- **List Channels** (`list_channels`) - List channels in a specific server (read)
+- **Get Messages** (`get_messages`) - Read recent messages from a channel (read)
+- **Get User Info** (`get_user_info`) - Get user profile information (read)
+- **Send Message** (`send_message`) - Send messages to Discord channels with reply support (write)
+- **Send Direct Message** (`send_dm`) - Send private messages to users (write)
+- **Read Direct Messages** (`read_direct_messages`) - Read DM conversations with specific users (read)
+- **Message Management** - Delete (`delete_message`) and edit (`edit_message`) messages with permissions (write)
 - **Advanced Features** - Support for embeds, attachments, reactions, and rich formatting
 
 ## Quick Start
@@ -271,6 +275,10 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=30
 
 | Tool | Parameters | Description |
 |------|------------|-------------|
+| `list_guilds` | - | List all accessible Discord servers |
+| `list_channels` | `guild_id` | List channels in a specific server |
+| `get_messages` | `channel_id` | Get recent messages from a channel |
+| `get_user_info` | `user_id` | Get user profile information |
 | `send_message` | `channel_id`, `content`, `reply_to_message_id?` | Send message to channel |
 | `send_dm` | `user_id`, `content` | Send direct message to user |
 | `read_direct_messages` | `user_id`, `limit?` | Read DM conversation |
@@ -279,7 +287,28 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=30
 
 ## Usage Examples
 
-### Reading Messages
+### Using Tools (Operations)
+```python
+# List all accessible Discord servers
+guilds = await client.call_tool("list_guilds", {})
+
+# List channels in a specific server
+channels = await client.call_tool("list_channels", {
+    "guild_id": "123456789012345678"
+})
+
+# Get recent messages from a channel
+messages = await client.call_tool("get_messages", {
+    "channel_id": "123456789012345678"
+})
+
+# Get user information
+user_info = await client.call_tool("get_user_info", {
+    "user_id": "987654321098765432"
+})
+```
+
+### Reading Messages (Resources)
 ```python
 # Through MCP client - get recent messages from a channel
 messages = await client.read_resource("messages://123456789012345678")
