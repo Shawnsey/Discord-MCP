@@ -10,8 +10,6 @@ from typing import Optional
 import structlog
 from mcp.server.fastmcp import FastMCP
 
-from .config import Settings
-from .discord_client import DiscordAPIError, DiscordClient
 from .services import IDiscordService
 
 logger = structlog.get_logger(__name__)
