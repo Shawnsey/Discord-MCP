@@ -330,19 +330,19 @@
   - [x] Ensure identical return values and error handling
 
 ### 3.4 Test Suite Updates
-- [ ] **Update tools tests** (tests/test_tools.py)
-  - [ ] Replace DiscordClient mocking with DiscordService mocking
-  - [ ] Update all test fixtures to use mock_discord_service
-  - [ ] Ensure all existing test assertions still pass
-  - [ ] Add tests for service integration in tools
-  - [ ] Maintain 90%+ test coverage for tools.py
+- [x] **Update tools tests** (tests/test_tools.py)
+  - [x] Replace DiscordClient mocking with DiscordService mocking
+  - [x] Update all test fixtures to use mock_discord_service
+  - [x] Ensure all existing test assertions still pass
+  - [x] Add tests for service integration in tools
+  - [x] Maintain 90%+ test coverage for tools.py
 
-- [ ] **Update resources tests** (tests/test_resources.py)
-  - [ ] Replace DiscordClient mocking with DiscordService mocking
-  - [ ] Update all test fixtures to use mock_discord_service
-  - [ ] Ensure all existing test assertions still pass
-  - [ ] Add tests for service integration in resources
-  - [ ] Maintain 90%+ test coverage for resources.py
+- [x] **Update resources tests** (tests/test_resources.py)
+  - [x] Replace DiscordClient mocking with DiscordService mocking
+  - [x] Update all test fixtures to use mock_discord_service
+  - [x] Ensure all existing test assertions still pass
+  - [x] Add tests for service integration in resources
+  - [x] Maintain 90%+ test coverage for resources.py
 
 ### 3.5 Integration Testing
 - [ ] **Run integration tests to validate behavior**
