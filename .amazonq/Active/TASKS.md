@@ -164,12 +164,12 @@
   - [x] Ensure exact same output format as current implementation
 
 ### 2.4 User Operations Implementation
-- [ ] **Implement `get_user_info_formatted(user_id: str)` method**
-  - [ ] Copy and consolidate logic from existing user info functionality
-  - [ ] Add user information fetching with proper error handling
-  - [ ] Format user information identically to existing implementation
-  - [ ] Add structured logging for user operations
-  - [ ] Ensure exact same output format as current implementation
+- [x] **Implement `get_user_info_formatted(user_id: str)` method**
+  - [x] Copy and consolidate logic from existing user info functionality
+  - [x] Add user information fetching with proper error handling
+  - [x] Format user information identically to existing implementation
+  - [x] Add structured logging for user operations
+  - [x] Ensure exact same output format as current implementation
 
 ### 2.5 Messaging Operations Implementation
 - [ ] **Implement `send_message()` method**

@@ -927,40 +927,280 @@ class TestDiscordService:
         assert "**Accent Color**: #0000ff" in result  # Should format as hex
 
     @pytest.mark.asyncio
-    async def test_send_message_not_implemented(self, discord_service):
-        """Test that send_message raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.send_message("111111111111111111", "test message")
+    # Tests for send_message method
+    async def test_send_message_success(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test successful message sending."""
+        # Setup
+        channel_id = "123456789012345678"
+        content = "Hello, world!"
+        mock_settings.is_channel_allowed.return_value = True
+        mock_settings.is_guild_allowed.return_value = True
+
+        mock_channel = {
+            "id": channel_id,
+            "name": "general",
+            "guild_id": "987654321098765432",
+        }
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_result = {"id": "msg123", "timestamp": "2023-01-01T12:00:00Z"}
+        mock_discord_client.send_message.return_value = mock_result
+
+        # Execute
+        result = await discord_service.send_message(channel_id, content)
+
+        # Verify
+        assert "✅ Message sent successfully to #general!" in result
+        assert "Message ID**: `msg123`" in result
+        assert "Channel**: #general (`123456789012345678`)" in result
+        assert "Content**: Hello, world!" in result
+        assert "Sent at**: 2023-01-01T12:00:00Z" in result
+
+        mock_discord_client.send_message.assert_called_once_with(
+            channel_id=channel_id, content=content, message_reference=None
+        )
 
     @pytest.mark.asyncio
-    async def test_send_direct_message_not_implemented(self, discord_service):
-        """Test that send_direct_message raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.send_direct_message(
-                "123456789012345678", "test message"
-            )
+    async def test_send_message_with_reply(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test message sending with reply."""
+        # Setup
+        channel_id = "123456789012345678"
+        content = "This is a reply"
+        reply_to = "reply123"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_result = {"id": "msg123", "timestamp": "2023-01-01T12:00:00Z"}
+        mock_discord_client.send_message.return_value = mock_result
+
+        # Execute
+        result = await discord_service.send_message(channel_id, content, reply_to)
+
+        # Verify
+        assert "Reply to**: `reply123`" in result
+        mock_discord_client.send_message.assert_called_once_with(
+            channel_id=channel_id,
+            content=content,
+            message_reference={"message_id": reply_to, "channel_id": channel_id},
+        )
 
     @pytest.mark.asyncio
-    async def test_read_direct_messages_not_implemented(self, discord_service):
-        """Test that read_direct_messages raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.read_direct_messages("123456789012345678")
+    async def test_send_message_empty_content(self, discord_service):
+        """Test sending message with empty content."""
+        result = await discord_service.send_message("123", "")
+        assert "❌ Error: Message content cannot be empty." in result
 
     @pytest.mark.asyncio
-    async def test_delete_message_not_implemented(self, discord_service):
-        """Test that delete_message raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.delete_message(
-                "111111111111111111", "222222222222222222"
-            )
+    async def test_send_message_content_too_long(self, discord_service):
+        """Test sending message with content too long."""
+        long_content = "a" * 2001
+        result = await discord_service.send_message("123", long_content)
+        assert "❌ Error: Message content too long (2001 characters)" in result
 
     @pytest.mark.asyncio
-    async def test_edit_message_not_implemented(self, discord_service):
-        """Test that edit_message raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.edit_message(
-                "111111111111111111", "222222222222222222", "new content"
-            )
+    async def test_send_message_channel_not_allowed(
+        self, discord_service, mock_settings
+    ):
+        """Test sending message to disallowed channel."""
+        mock_settings.is_channel_allowed.return_value = False
+        result = await discord_service.send_message("123", "test")
+        assert "❌ Error: Access to channel `123` is not permitted." in result
+
+    # Tests for send_direct_message method
+    @pytest.mark.asyncio
+    async def test_send_direct_message_success(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test successful DM sending."""
+        # Setup
+        user_id = "123456789012345678"
+        content = "Hello DM!"
+
+        mock_user = {"id": user_id, "username": "testuser", "bot": False}
+        mock_discord_client.get_user.return_value = mock_user
+
+        mock_result = {"id": "dm123", "timestamp": "2023-01-01T12:00:00Z"}
+        mock_discord_client.send_dm.return_value = mock_result
+
+        # Execute
+        result = await discord_service.send_direct_message(user_id, content)
+
+        # Verify
+        assert "✅ Direct message sent successfully to testuser!" in result
+        assert "Message ID**: `dm123`" in result
+        assert "Recipient**: testuser (`123456789012345678`)" in result
+        assert "Content**: Hello DM!" in result
+
+        mock_discord_client.send_dm.assert_called_once_with(user_id, content)
+
+    @pytest.mark.asyncio
+    async def test_send_direct_message_user_not_found(
+        self, discord_service, mock_discord_client
+    ):
+        """Test DM to non-existent user."""
+        mock_discord_client.get_user.side_effect = DiscordAPIError("Not Found", 404)
+        result = await discord_service.send_direct_message("123", "test")
+        assert "❌ Error: User `123` not found." in result
+
+    @pytest.mark.asyncio
+    async def test_read_direct_messages_success(
+        self, discord_service, mock_discord_client
+    ):
+        """Test successful DM reading."""
+        # Setup
+        user_id = "123456789012345678"
+
+        mock_user = {"id": user_id, "username": "testuser", "discriminator": "1234"}
+        mock_discord_client.get_user.return_value = mock_user
+
+        mock_dm_channel = {"id": "dm_channel_123"}
+        mock_discord_client.create_dm_channel.return_value = mock_dm_channel
+
+        mock_bot_user = {"id": "bot123", "username": "TestBot"}
+        mock_discord_client.get_current_user.return_value = mock_bot_user
+
+        mock_messages = [
+            {
+                "id": "msg1",
+                "author": {"id": user_id, "username": "testuser"},
+                "content": "Hello bot!",
+                "timestamp": "2023-01-01T12:00:00Z",
+                "embeds": [],
+                "attachments": [],
+                "reactions": [],
+            }
+        ]
+        mock_discord_client.get_channel_messages.return_value = mock_messages
+
+        # Execute
+        result = await discord_service.read_direct_messages(user_id)
+
+        # Verify
+        assert "📬 **Direct Messages with testuser#1234**" in result
+        assert "DM Channel ID: `dm_channel_123`" in result
+        assert "Retrieved 1 message(s)" in result
+        assert "👤 testuser#1234" in result
+        assert "Hello bot!" in result
+
+    @pytest.mark.asyncio
+    async def test_read_direct_messages_invalid_limit(self, discord_service):
+        """Test DM reading with invalid limit."""
+        result = await discord_service.read_direct_messages("123", limit=101)
+        assert "❌ Error: Limit must be between 1 and 100." in result
+
+    @pytest.mark.asyncio
+    async def test_delete_message_success(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test successful message deletion."""
+        # Setup
+        channel_id = "123456789012345678"
+        message_id = "msg123"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_message = {
+            "id": message_id,
+            "author": {"username": "testuser"},
+            "content": "Test message content",
+        }
+        mock_discord_client.get_channel_message.return_value = mock_message
+
+        mock_discord_client.delete_message.return_value = None
+
+        # Execute
+        result = await discord_service.delete_message(channel_id, message_id)
+
+        # Verify
+        assert "✅ Message deleted successfully from #general!" in result
+        assert "Message ID**: `msg123`" in result
+        assert "Author**: testuser" in result
+        assert "Content**: Test message content" in result
+
+        mock_discord_client.delete_message.assert_called_once_with(
+            channel_id, message_id
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_message_not_found(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test deleting non-existent message."""
+        mock_settings.is_channel_allowed.return_value = True
+        mock_channel = {"id": "123", "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+        mock_discord_client.get_channel_message.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )
+
+        result = await discord_service.delete_message("123", "msg123")
+        assert "❌ Error: Message `msg123` not found in channel #general." in result
+
+    @pytest.mark.asyncio
+    async def test_edit_message_success(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test successful message editing."""
+        # Setup
+        channel_id = "123456789012345678"
+        message_id = "msg123"
+        new_content = "Updated content"
+        mock_settings.is_channel_allowed.return_value = True
+
+        mock_channel = {"id": channel_id, "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_bot_user = {"id": "bot123"}
+        mock_discord_client.get_current_user.return_value = mock_bot_user
+
+        mock_message = {
+            "id": message_id,
+            "author": {"id": "bot123"},
+            "content": "Original content",
+        }
+        mock_discord_client.get_channel_message.return_value = mock_message
+
+        mock_discord_client.patch.return_value = {"id": message_id}
+
+        # Execute
+        result = await discord_service.edit_message(channel_id, message_id, new_content)
+
+        # Verify
+        assert "✅ Message edited successfully in #general!" in result
+        assert "Message ID**: `msg123`" in result
+        assert "Old Content**: Original content" in result
+        assert "New Content**: Updated content" in result
+
+        mock_discord_client.patch.assert_called_once_with(
+            f"/channels/{channel_id}/messages/{message_id}",
+            data={"content": new_content},
+        )
+
+    @pytest.mark.asyncio
+    async def test_edit_message_not_own_message(
+        self, discord_service, mock_discord_client, mock_settings
+    ):
+        """Test editing message not owned by bot."""
+        mock_settings.is_channel_allowed.return_value = True
+        mock_channel = {"id": "123", "name": "general"}
+        mock_discord_client.get_channel.return_value = mock_channel
+
+        mock_bot_user = {"id": "bot123"}
+        mock_discord_client.get_current_user.return_value = mock_bot_user
+
+        mock_message = {"author": {"id": "other_user"}, "content": "test"}
+        mock_discord_client.get_channel_message.return_value = mock_message
+
+        result = await discord_service.edit_message("123", "msg123", "new content")
+        assert "❌ Error: Can only edit bot's own messages" in result
 
 
 class TestDiscordServiceHelperMethods:
