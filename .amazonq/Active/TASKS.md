@@ -243,63 +243,63 @@
 **Goal**: Refactor tools.py and resources.py to use DiscordService
 
 ### 3.1 Tools Refactor - Read Operations
-- [ ] **Refactor `list_guilds` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_guilds_formatted()`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
-  - [ ] Remove duplicated code (lines 23-89)
+- [x] **Refactor `list_guilds` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_guilds_formatted()`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
+  - [x] Remove duplicated code (lines 23-89)
 
-- [ ] **Refactor `list_channels` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_channels_formatted(guild_id)`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
-  - [ ] Remove duplicated code (lines 91-207)
+- [x] **Refactor `list_channels` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_channels_formatted(guild_id)`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
+  - [x] Remove duplicated code (lines 91-207)
 
-- [ ] **Refactor `get_messages` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_messages_formatted(channel_id)`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
-  - [ ] Remove duplicated code (lines 209-325)
+- [x] **Refactor `get_messages` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_messages_formatted(channel_id)`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
+  - [x] Remove duplicated code (lines 209-325)
 
-- [ ] **Refactor `get_user_info` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_user_info_formatted(user_id)`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `get_user_info` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_user_info_formatted(user_id)`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
 
 ### 3.2 Tools Refactor - Write Operations
-- [ ] **Refactor `send_message` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.send_message()`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `send_message` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.send_message()`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
 
-- [ ] **Refactor `send_dm` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.send_direct_message()`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `send_dm` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.send_direct_message()`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
 
-- [ ] **Refactor `read_direct_messages` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.read_direct_messages()`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `read_direct_messages` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.read_direct_messages()`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
 
-- [ ] **Refactor `delete_message` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.delete_message()`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `delete_message` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.delete_message()`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
 
-- [ ] **Refactor `edit_message` tool** (tools.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.edit_message()`
-  - [ ] Maintain exact same function signature
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `edit_message` tool** (tools.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.edit_message()`
+  - [x] Maintain exact same function signature
+  - [x] Ensure identical return values and error handling
 
 ### 3.3 Resources Refactor
 - [ ] **Refactor `list_guilds` resource** (resources.py)
