@@ -302,32 +302,32 @@
   - [x] Ensure identical return values and error handling
 
 ### 3.3 Resources Refactor
-- [ ] **Refactor `list_guilds` resource** (resources.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_guilds_formatted()`
-  - [ ] Maintain exact same resource URI pattern (`guilds://`)
-  - [ ] Ensure identical return values and error handling
-  - [ ] Remove duplicated code (lines 18-84)
+- [x] **Refactor `list_guilds` resource** (resources.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_guilds_formatted()`
+  - [x] Maintain exact same resource URI pattern (`guilds://`)
+  - [x] Ensure identical return values and error handling
+  - [x] Remove duplicated code (lines 18-84)
 
-- [ ] **Refactor `list_channels` resource** (resources.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_channels_formatted(guild_id)`
-  - [ ] Maintain exact same resource URI pattern (`channels://{guild_id}`)
-  - [ ] Ensure identical return values and error handling
-  - [ ] Remove duplicated code (lines 86-202)
+- [x] **Refactor `list_channels` resource** (resources.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_channels_formatted(guild_id)`
+  - [x] Maintain exact same resource URI pattern (`channels://{guild_id}`)
+  - [x] Ensure identical return values and error handling
+  - [x] Remove duplicated code (lines 86-202)
 
-- [ ] **Refactor `get_messages` resource** (resources.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_messages_formatted(channel_id)`
-  - [ ] Maintain exact same resource URI pattern (`messages://{channel_id}`)
-  - [ ] Ensure identical return values and error handling
-  - [ ] Remove duplicated code (lines 204-320)
+- [x] **Refactor `get_messages` resource** (resources.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_messages_formatted(channel_id)`
+  - [x] Maintain exact same resource URI pattern (`messages://{channel_id}`)
+  - [x] Ensure identical return values and error handling
+  - [x] Remove duplicated code (lines 204-320)
 
-- [ ] **Refactor `get_user_info` resource** (resources.py)
-  - [ ] Replace direct discord_client usage with service call
-  - [ ] Update to use `discord_service.get_user_info_formatted(user_id)`
-  - [ ] Maintain exact same resource URI pattern (`user://{user_id}`)
-  - [ ] Ensure identical return values and error handling
+- [x] **Refactor `get_user_info` resource** (resources.py)
+  - [x] Replace direct discord_client usage with service call
+  - [x] Update to use `discord_service.get_user_info_formatted(user_id)`
+  - [x] Maintain exact same resource URI pattern (`user://{user_id}`)
+  - [x] Ensure identical return values and error handling
 
 ### 3.4 Test Suite Updates
 - [ ] **Update tools tests** (tests/test_tools.py)
