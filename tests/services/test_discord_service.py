@@ -702,11 +702,229 @@ class TestDiscordService:
         assert "# Error" in result
         assert "Unexpected error while fetching messages" in result
 
+    # Tests for get_user_info_formatted method
     @pytest.mark.asyncio
-    async def test_get_user_info_formatted_not_implemented(self, discord_service):
-        """Test that get_user_info_formatted raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Method implementation pending"):
-            await discord_service.get_user_info_formatted("123456789012345678")
+    async def test_get_user_info_formatted_success(
+        self, discord_service, mock_discord_client
+    ):
+        """Test successful user info retrieval and formatting."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {
+            "id": user_id,
+            "username": "testuser",
+            "discriminator": "1234",
+            "global_name": "Test User",
+            "bot": False,
+            "system": False,
+            "avatar": "avatar_hash",
+            "banner": "banner_hash",
+            "accent_color": 16711680,  # Red color
+            "public_flags": 64,
+        }
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# User: testuser" in result
+        assert "**Username**: testuser" in result
+        assert f"**User ID**: `{user_id}`" in result
+        assert "**Discriminator**: #1234" in result
+        assert "**Display Name**: Test User" in result
+        assert "**Type**: User" in result
+        assert "**Avatar**: [View Avatar](https://cdn.discordapp.com/avatars/" in result
+        assert "**Banner**: [View Banner](https://cdn.discordapp.com/banners/" in result
+        assert "**Accent Color**: #ff0000" in result
+        assert "**Public Flags**: 64" in result
+
+        mock_discord_client.get_user.assert_called_once_with(user_id)
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_bot_user(
+        self, discord_service, mock_discord_client
+    ):
+        """Test formatting of bot user information."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {
+            "id": user_id,
+            "username": "testbot",
+            "discriminator": "0",  # Modern Discord bots use "0"
+            "bot": True,
+            "system": False,
+            "avatar": None,
+        }
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# User: testbot" in result
+        assert "**Type**: Bot" in result
+        assert "**Avatar**: Default avatar" in result
+        assert (
+            "**Discriminator**" not in result
+        )  # Should not show discriminator when it's "0"
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_system_user(
+        self, discord_service, mock_discord_client
+    ):
+        """Test formatting of system user information."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {
+            "id": user_id,
+            "username": "systemuser",
+            "bot": False,
+            "system": True,
+            "avatar": None,
+        }
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "**System User**: Yes" in result
+        assert "**Type**: User" in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_minimal_user(
+        self, discord_service, mock_discord_client
+    ):
+        """Test formatting of user with minimal information."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {"id": user_id, "username": "minimaluser"}
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# User: minimaluser" in result
+        assert "**Username**: minimaluser" in result
+        assert f"**User ID**: `{user_id}`" in result
+        assert "**Type**: User" in result
+        assert "**Avatar**: Default avatar" in result
+        # Should not contain optional fields
+        assert "**Discriminator**" not in result
+        assert "**Display Name**" not in result
+        assert "**Banner**" not in result
+        assert "**Accent Color**" not in result
+        assert "**Public Flags**" not in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_same_username_and_display_name(
+        self, discord_service, mock_discord_client
+    ):
+        """Test that display name is not shown when it's the same as username."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {
+            "id": user_id,
+            "username": "testuser",
+            "global_name": "testuser",  # Same as username
+        }
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "**Display Name**" not in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_missing_username(
+        self, discord_service, mock_discord_client
+    ):
+        """Test handling of user with missing username."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {
+            "id": user_id
+            # Missing username
+        }
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# User: Unknown" in result
+        assert "**Username**: Unknown" in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_user_not_found(
+        self, discord_service, mock_discord_client
+    ):
+        """Test user not found error handling."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_discord_client.get_user.side_effect = DiscordAPIError("Not Found", 404)
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# User Not Found" in result
+        assert f"User with ID `{user_id}` was not found" in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_discord_api_error(
+        self, discord_service, mock_discord_client
+    ):
+        """Test Discord API error handling."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_discord_client.get_user.side_effect = DiscordAPIError("Server Error", 500)
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# Error" in result
+        assert "Discord API error while fetching user info" in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_unexpected_error(
+        self, discord_service, mock_discord_client
+    ):
+        """Test unexpected error handling."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_discord_client.get_user.side_effect = ValueError("Unexpected error")
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "# Error" in result
+        assert "Unexpected error while fetching user info" in result
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_formatted_accent_color_formatting(
+        self, discord_service, mock_discord_client
+    ):
+        """Test proper formatting of accent color."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_user = {
+            "id": user_id,
+            "username": "coloruser",
+            "accent_color": 255,  # Blue color
+        }
+        mock_discord_client.get_user.return_value = mock_user
+
+        # Execute
+        result = await discord_service.get_user_info_formatted(user_id)
+
+        # Verify
+        assert "**Accent Color**: #0000ff" in result  # Should format as hex
 
     @pytest.mark.asyncio
     async def test_send_message_not_implemented(self, discord_service):

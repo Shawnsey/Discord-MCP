@@ -151,17 +151,17 @@
   - [x] Ensure exact same output format as current implementation
 
 ### 2.3 Message Operations Implementation
-- [ ] **Implement `get_messages_formatted(channel_id: str, limit: int = 50)` method**
-  - [ ] Copy and consolidate logic from tools.py and resources.py
-  - [ ] Add channel permission validation
-  - [ ] Implement channel information fetching with 404 handling
-  - [ ] Add guild permission validation for guild channels
-  - [ ] Implement message fetching with proper limit handling
-  - [ ] Add message formatting with timestamp conversion
-  - [ ] Handle attachments and non-text content
-  - [ ] Format message information identically to existing implementation
-  - [ ] Add structured logging for message operations
-  - [ ] Ensure exact same output format as current implementation
+- [x] **Implement `get_messages_formatted(channel_id: str, limit: int = 50)` method**
+  - [x] Copy and consolidate logic from tools.py and resources.py
+  - [x] Add channel permission validation
+  - [x] Implement channel information fetching with 404 handling
+  - [x] Add guild permission validation for guild channels
+  - [x] Implement message fetching with proper limit handling
+  - [x] Add message formatting with timestamp conversion
+  - [x] Handle attachments and non-text content
+  - [x] Format message information identically to existing implementation
+  - [x] Add structured logging for message operations
+  - [x] Ensure exact same output format as current implementation
 
 ### 2.4 User Operations Implementation
 - [ ] **Implement `get_user_info_formatted(user_id: str)` method**

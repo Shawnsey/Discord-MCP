@@ -352,8 +352,75 @@ class DiscordService(IDiscordService):
         Returns:
             str: Formatted markdown string containing user information
         """
-        # Implementation will be added in the next phase
-        raise NotImplementedError("Method implementation pending")
+        try:
+            self._logger.info("Fetching user info", user_id=user_id)
+
+            # Get user information from Discord API
+            try:
+                user = await self._discord_client.get_user(user_id)
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return (
+                        f"# User Not Found\n\nUser with ID `{user_id}` was not found."
+                    )
+                raise
+
+            # Format user information
+            user_info = []
+            user_info.append(f"# User: {user.get('username', 'Unknown')}")
+            user_info.append("")
+
+            user_info.append(f"- **Username**: {user.get('username', 'Unknown')}")
+            user_info.append(f"- **User ID**: `{user.get('id', user_id)}`")
+
+            # Add discriminator if it exists (legacy Discord usernames)
+            if user.get("discriminator") and user.get("discriminator") != "0":
+                user_info.append(f"- **Discriminator**: #{user['discriminator']}")
+
+            # Add display name if different from username
+            if user.get("global_name") and user.get("global_name") != user.get(
+                "username"
+            ):
+                user_info.append(f"- **Display Name**: {user['global_name']}")
+
+            # Add bot status
+            if user.get("bot"):
+                user_info.append("- **Type**: Bot")
+            else:
+                user_info.append("- **Type**: User")
+
+            # Add system user status
+            if user.get("system"):
+                user_info.append("- **System User**: Yes")
+
+            # Add avatar information
+            if user.get("avatar"):
+                avatar_url = f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.png"
+                user_info.append(f"- **Avatar**: [View Avatar]({avatar_url})")
+            else:
+                user_info.append("- **Avatar**: Default avatar")
+
+            # Add banner if available
+            if user.get("banner"):
+                banner_url = f"https://cdn.discordapp.com/banners/{user['id']}/{user['banner']}.png"
+                user_info.append(f"- **Banner**: [View Banner]({banner_url})")
+
+            # Add accent color if available
+            if user.get("accent_color"):
+                user_info.append(f"- **Accent Color**: #{user['accent_color']:06x}")
+
+            # Add public flags if available
+            if user.get("public_flags"):
+                user_info.append(f"- **Public Flags**: {user['public_flags']}")
+
+            result = "\n".join(user_info)
+            self._logger.info("User info retrieved successfully", user_id=user_id)
+            return result
+
+        except DiscordAPIError as e:
+            return self._handle_discord_error(e, "fetching user info")
+        except Exception as e:
+            return self._handle_unexpected_error(e, "fetching user info")
 
     async def send_message(
         self, channel_id: str, content: str, reply_to_message_id: Optional[str] = None
