@@ -2,40 +2,21 @@
 Tests for Discord MCP resources.
 """
 
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 
-from discord_mcp.resources import register_resources
-from discord_mcp.discord_client import DiscordAPIError
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from mcp.server.fastmcp import FastMCP
+
 from discord_mcp.config import Settings
-from mcp.server.fastmcp import FastMCP, Context
-
-
-@pytest.fixture
-def settings():
-    """Create test settings."""
-    return Settings(
-        discord_bot_token="FAKE_BOT_TOKEN_FOR_TESTING_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        discord_application_id="123456789012345678"
-    )
-
-
-@pytest.fixture
-def mock_discord_client():
-    """Create mock Discord client."""
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_context(settings, mock_discord_client):
-    """Create mock MCP context."""
-    context = MagicMock()
-    context.request_context.lifespan_context = {
-        "discord_client": mock_discord_client,
-        "settings": settings
-    }
-    return context
+from discord_mcp.discord_client import DiscordAPIError
+from discord_mcp.resources import register_resources
+from discord_mcp.services import IDiscordService
 
 
 @pytest.fixture
@@ -46,383 +27,225 @@ def server_with_resources():
     return server
 
 
-class TestGuildListingResource:
-    """Test guild listing resource."""
-    
+@pytest.fixture
+def mock_discord_service():
+    """Create a mock DiscordService."""
+    mock_service = AsyncMock(spec=IDiscordService)
+    return mock_service
+
+
+@pytest.fixture
+def settings():
+    """Create test settings."""
+    return Settings(
+        discord_bot_token="FAKE_BOT_TOKEN_FOR_TESTING_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        discord_application_id="123456789012345678",
+    )
+
+
+def create_mock_context(mock_discord_service, settings=None):
+    """Helper function to create mock context."""
+    if settings is None:
+        settings = Settings(
+            discord_bot_token="FAKE_BOT_TOKEN_FOR_TESTING_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            discord_application_id="123456789012345678",
+        )
+
+    context = MagicMock()
+    context.request_context.lifespan_context = {
+        "discord_service": mock_discord_service,
+        "settings": settings,
+    }
+    return context
+
+
+def extract_resource_result(read_resource_result):
+    """Extract the actual result string from FastMCP read_resource return value."""
+    # read_resource returns a list of ReadResourceContents objects
+    if isinstance(read_resource_result, list) and len(read_resource_result) > 0:
+        return read_resource_result[0].content
+    else:
+        return str(read_resource_result)
+
+
+class TestResourcesIntegration:
+    """Test resources integration with DiscordService."""
+
     @pytest.mark.asyncio
-    async def test_list_guilds_success(self, server_with_resources, mock_context, mock_discord_client):
-        """Test successful guild listing."""
-        # Mock guild data
-        mock_guilds = [
-            {"id": "123", "name": "Test Guild 1", "owner": True},
-            {"id": "456", "name": "Test Guild 2", "owner": False}
-        ]
-        mock_discord_client.get_user_guilds.return_value = mock_guilds
-        mock_discord_client.get_guild.side_effect = [
-            {"approximate_member_count": 100, "description": "Test guild 1"},
-            {"approximate_member_count": 50, "description": None}
-        ]
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "guilds://":
-                resource_func = resource.handler
-                break
-        
-        assert resource_func is not None
-        
-        # Call the resource
-        result = await resource_func(mock_context)
-        
+    async def test_guilds_resource_integration(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test guilds resource integration with DiscordService."""
+        expected_response = (
+            "# Discord Guilds\n\nFound 2 accessible guild(s):\n\n## Test Guild"
+        )
+        mock_discord_service.get_guilds_formatted.return_value = expected_response
+
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the resource through the server
+        result = await server_with_resources.read_resource("guilds://")
+        actual_result = extract_resource_result(result)
+
+        # Verify the service was called
+        mock_discord_service.get_guilds_formatted.assert_called_once()
+
         # Verify the result
-        assert "# Discord Guilds" in result
-        assert "Test Guild 1" in result
-        assert "Test Guild 2" in result
-        assert "123" in result
-        assert "456" in result
-        assert "100" in result  # Member count
-        
-        # Verify API calls
-        mock_discord_client.get_user_guilds.assert_called_once()
-        assert mock_discord_client.get_guild.call_count == 2
-    
-    @pytest.mark.asyncio
-    async def test_list_guilds_with_filter(self, server_with_resources, mock_context, mock_discord_client, settings):
-        """Test guild listing with allowed guilds filter."""
-        # Set allowed guilds
-        settings.allowed_guilds = "123"
-        
-        # Mock guild data
-        mock_guilds = [
-            {"id": "123", "name": "Allowed Guild", "owner": True},
-            {"id": "456", "name": "Blocked Guild", "owner": False}
-        ]
-        mock_discord_client.get_user_guilds.return_value = mock_guilds
-        mock_discord_client.get_guild.return_value = {"approximate_member_count": 100}
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "guilds://":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(mock_context)
-        
-        # Verify only allowed guild is shown
-        assert "Allowed Guild" in result
-        assert "Blocked Guild" not in result
-        assert "123" in result
-        assert "456" not in result
-    
-    @pytest.mark.asyncio
-    async def test_list_guilds_api_error(self, server_with_resources, mock_context, mock_discord_client):
-        """Test guild listing with API error."""
-        mock_discord_client.get_user_guilds.side_effect = DiscordAPIError("API Error", 500)
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "guilds://":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(mock_context)
-        
-        # Verify error handling
-        assert "# Error" in result
-        assert "Discord API error" in result
-        assert "API Error" in result
+        assert actual_result == expected_response
 
-
-class TestChannelListingResource:
-    """Test channel listing resource."""
-    
     @pytest.mark.asyncio
-    async def test_list_channels_success(self, server_with_resources, mock_context, mock_discord_client):
-        """Test successful channel listing."""
-        guild_id = "123"
-        
-        # Mock guild and channel data
-        mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
-        mock_channels = [
-            {"id": "ch1", "name": "general", "type": 0, "topic": "General chat", "position": 0},
-            {"id": "ch2", "name": "voice", "type": 2, "position": 1},
-            {"id": "ch3", "name": "announcements", "type": 5, "topic": "Important updates", "position": 2}
-        ]
-        mock_discord_client.get_guild_channels.return_value = mock_channels
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "channels://{guild_id}":
-                resource_func = resource.handler
-                break
-        
-        assert resource_func is not None
-        
-        # Call the resource
-        result = await resource_func(guild_id, mock_context)
-        
+    async def test_channels_resource_integration(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test channels resource integration with DiscordService."""
+        guild_id = "guild123"
+        expected_response = "# Channels in Test Guild\n\nFound 3 accessible channel(s):"
+        mock_discord_service.get_channels_formatted.return_value = expected_response
+
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the resource through the server
+        result = await server_with_resources.read_resource(f"channels://{guild_id}")
+        actual_result = extract_resource_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.get_channels_formatted.assert_called_once_with(guild_id)
+
         # Verify the result
-        assert "# Channels in Test Guild" in result
-        assert "general" in result
-        assert "voice" in result
-        assert "announcements" in result
-        assert "Text Channels" in result
-        assert "Voice Channels" in result
-        assert "General chat" in result
-        
-        # Verify API calls
-        mock_discord_client.get_guild.assert_called_once_with(guild_id)
-        mock_discord_client.get_guild_channels.assert_called_once_with(guild_id)
-    
-    @pytest.mark.asyncio
-    async def test_list_channels_guild_not_allowed(self, server_with_resources, mock_context, mock_discord_client, settings):
-        """Test channel listing with guild not allowed."""
-        guild_id = "456"
-        settings.allowed_guilds = "123"  # Only allow guild 123
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "channels://{guild_id}":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(guild_id, mock_context)
-        
-        # Verify access denied
-        assert "# Access Denied" in result
-        assert "not permitted" in result
-        
-        # Verify no API calls were made
-        mock_discord_client.get_guild.assert_not_called()
-        mock_discord_client.get_guild_channels.assert_not_called()
-    
-    @pytest.mark.asyncio
-    async def test_list_channels_guild_not_found(self, server_with_resources, mock_context, mock_discord_client):
-        """Test channel listing with guild not found."""
-        guild_id = "999"
-        
-        mock_discord_client.get_guild.side_effect = DiscordAPIError("Not Found", 404)
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "channels://{guild_id}":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(guild_id, mock_context)
-        
-        # Verify not found message
-        assert "# Guild Not Found" in result
-        assert "not found" in result
+        assert actual_result == expected_response
 
-
-class TestMessageResource:
-    """Test message reading resource."""
-    
     @pytest.mark.asyncio
-    async def test_get_messages_success(self, server_with_resources, mock_context, mock_discord_client):
-        """Test successful message retrieval."""
-        channel_id = "ch123"
-        
-        # Mock channel and message data
-        mock_discord_client.get_channel.return_value = {
-            "name": "general", 
-            "guild_id": "guild123"
-        }
-        mock_messages = [
-            {
-                "id": "msg1",
-                "content": "Hello world!",
-                "author": {"username": "user1", "id": "u1"},
-                "timestamp": "2023-01-01T12:00:00Z",
-                "attachments": [],
-                "embeds": []
-            },
-            {
-                "id": "msg2", 
-                "content": "How are you?",
-                "author": {"username": "user2", "id": "u2"},
-                "timestamp": "2023-01-01T12:01:00Z",
-                "attachments": [{"filename": "image.png"}],
-                "embeds": []
-            }
-        ]
-        mock_discord_client.get_channel_messages.return_value = mock_messages
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "messages://{channel_id}":
-                resource_func = resource.handler
-                break
-        
-        assert resource_func is not None
-        
-        # Call the resource
-        result = await resource_func(channel_id, mock_context)
-        
+    async def test_messages_resource_integration(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test messages resource integration with DiscordService."""
+        channel_id = "channel123"
+        expected_response = "# Messages in #general\n\nShowing 2 recent message(s):"
+        mock_discord_service.get_messages_formatted.return_value = expected_response
+
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the resource through the server
+        result = await server_with_resources.read_resource(f"messages://{channel_id}")
+        actual_result = extract_resource_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.get_messages_formatted.assert_called_once_with(channel_id)
+
         # Verify the result
-        assert "# Messages in #general" in result
-        assert "Hello world!" in result
-        assert "How are you?" in result
-        assert "user1" in result
-        assert "user2" in result
-        assert "2023-01-01" in result
-        assert "image.png" in result
-        
-        # Verify API calls
-        mock_discord_client.get_channel.assert_called_once_with(channel_id)
-        mock_discord_client.get_channel_messages.assert_called_once_with(channel_id, limit=50)
-    
-    @pytest.mark.asyncio
-    async def test_get_messages_channel_not_allowed(self, server_with_resources, mock_context, mock_discord_client, settings):
-        """Test message retrieval with channel not allowed."""
-        channel_id = "ch456"
-        settings.allowed_channels = "ch123"  # Only allow ch123
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "messages://{channel_id}":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(channel_id, mock_context)
-        
-        # Verify access denied
-        assert "# Access Denied" in result
-        assert "not permitted" in result
-        
-        # Verify no API calls were made
-        mock_discord_client.get_channel.assert_not_called()
-    
-    @pytest.mark.asyncio
-    async def test_get_messages_empty_channel(self, server_with_resources, mock_context, mock_discord_client):
-        """Test message retrieval from empty channel."""
-        channel_id = "ch123"
-        
-        mock_discord_client.get_channel.return_value = {"name": "empty", "guild_id": "guild123"}
-        mock_discord_client.get_channel_messages.return_value = []
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "messages://{channel_id}":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(channel_id, mock_context)
-        
-        # Verify empty message
-        assert "# Messages in #empty" in result
-        assert "No messages found" in result
+        assert actual_result == expected_response
 
-
-class TestUserInfoResource:
-    """Test user information resource."""
-    
     @pytest.mark.asyncio
-    async def test_get_user_info_success(self, server_with_resources, mock_context, mock_discord_client):
-        """Test successful user info retrieval."""
-        user_id = "u123"
-        
-        # Mock user data
-        mock_user = {
-            "id": user_id,
-            "username": "testuser",
-            "discriminator": "1234",
-            "global_name": "Test User",
-            "bot": False,
-            "avatar": "avatar_hash",
-            "banner": "banner_hash",
-            "accent_color": 0xFF0000,
-            "public_flags": 64
-        }
-        mock_discord_client.get_user.return_value = mock_user
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "user://{user_id}":
-                resource_func = resource.handler
-                break
-        
-        assert resource_func is not None
-        
-        # Call the resource
-        result = await resource_func(user_id, mock_context)
-        
+    async def test_user_resource_integration(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test user resource integration with DiscordService."""
+        user_id = "user123"
+        expected_response = "# User: TestUser\n\n- **Username**: TestUser"
+        mock_discord_service.get_user_info_formatted.return_value = expected_response
+
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the resource through the server
+        result = await server_with_resources.read_resource(f"user://{user_id}")
+        actual_result = extract_resource_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.get_user_info_formatted.assert_called_once_with(user_id)
+
         # Verify the result
-        assert "# User: testuser" in result
-        assert "testuser" in result
-        assert "Test User" in result
-        assert "#1234" in result
-        assert "User" in result  # Type: User
-        assert "View Avatar" in result
-        assert "View Banner" in result
-        assert "#ff0000" in result  # Accent color
-        
-        # Verify API call
-        mock_discord_client.get_user.assert_called_once_with(user_id)
-    
+        assert actual_result == expected_response
+
     @pytest.mark.asyncio
-    async def test_get_user_info_bot(self, server_with_resources, mock_context, mock_discord_client):
-        """Test user info retrieval for bot user."""
-        user_id = "bot123"
-        
-        # Mock bot user data
-        mock_user = {
-            "id": user_id,
-            "username": "testbot",
-            "bot": True,
-            "avatar": None
-        }
-        mock_discord_client.get_user.return_value = mock_user
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "user://{user_id}":
-                resource_func = resource.handler
-                break
-        
-        # Call the resource
-        result = await resource_func(user_id, mock_context)
-        
-        # Verify bot-specific info
-        assert "# User: testbot" in result
-        assert "Type**: Bot" in result
-        assert "Default avatar" in result
-    
+    async def test_resources_use_discord_service_context(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test that resources properly access DiscordService from context."""
+        # Setup mock responses for all service methods
+        mock_discord_service.get_guilds_formatted.return_value = "Guilds response"
+        mock_discord_service.get_channels_formatted.return_value = "Channels response"
+        mock_discord_service.get_messages_formatted.return_value = "Messages response"
+        mock_discord_service.get_user_info_formatted.return_value = "User info response"
+
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Test each resource calls the appropriate service method
+        await server_with_resources.read_resource("guilds://")
+        mock_discord_service.get_guilds_formatted.assert_called_once()
+
+        await server_with_resources.read_resource("channels://guild123")
+        mock_discord_service.get_channels_formatted.assert_called_once_with("guild123")
+
+        await server_with_resources.read_resource("messages://channel123")
+        mock_discord_service.get_messages_formatted.assert_called_once_with(
+            "channel123"
+        )
+
+        await server_with_resources.read_resource("user://user123")
+        mock_discord_service.get_user_info_formatted.assert_called_once_with("user123")
+
     @pytest.mark.asyncio
-    async def test_get_user_info_not_found(self, server_with_resources, mock_context, mock_discord_client):
-        """Test user info retrieval for non-existent user."""
-        user_id = "u999"
-        
-        mock_discord_client.get_user.side_effect = DiscordAPIError("Not Found", 404)
-        
-        # Get the resource function
-        resource_func = None
-        for resource in server_with_resources._resources:
-            if resource.uri_template == "user://{user_id}":
-                resource_func = resource.handler
-                break
-        
+    async def test_resource_parameter_handling(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test that resources handle parameters correctly."""
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Setup mock responses
+        mock_discord_service.get_channels_formatted.return_value = "Channels response"
+        mock_discord_service.get_messages_formatted.return_value = "Messages response"
+        mock_discord_service.get_user_info_formatted.return_value = "User info response"
+
+        # Test parameter passing
+        test_guild_id = "test_guild_123"
+        test_channel_id = "test_channel_456"
+        test_user_id = "test_user_789"
+
+        await server_with_resources.read_resource(f"channels://{test_guild_id}")
+        mock_discord_service.get_channels_formatted.assert_called_with(test_guild_id)
+
+        await server_with_resources.read_resource(f"messages://{test_channel_id}")
+        mock_discord_service.get_messages_formatted.assert_called_with(test_channel_id)
+
+        await server_with_resources.read_resource(f"user://{test_user_id}")
+        mock_discord_service.get_user_info_formatted.assert_called_with(test_user_id)
+
+    @pytest.mark.asyncio
+    async def test_error_handling_preserved(
+        self, server_with_resources, mock_discord_service
+    ):
+        """Test that error handling is preserved through service layer."""
+        error_response = "# Error\n\nDiscord API error while fetching guilds: API Error"
+        mock_discord_service.get_guilds_formatted.return_value = error_response
+
+        # Mock the server context
+        server_with_resources.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
         # Call the resource
-        result = await resource_func(user_id, mock_context)
-        
-        # Verify not found message
-        assert "# User Not Found" in result
-        assert "not found" in result
+        result = await server_with_resources.read_resource("guilds://")
+        actual_result = extract_resource_result(result)
+
+        # Verify error response is returned
+        assert actual_result == error_response
+        assert "Error" in actual_result
+        assert "Discord API error" in actual_result
