@@ -172,54 +172,54 @@
   - [x] Ensure exact same output format as current implementation
 
 ### 2.5 Messaging Operations Implementation
-- [ ] **Implement `send_message()` method**
-  - [ ] Copy logic from existing send_message tool
-  - [ ] Add channel permission validation
-  - [ ] Implement message sending with reply support
-  - [ ] Add proper error handling and logging
-  - [ ] Ensure exact same response format
+- [x] **Implement `send_message()` method**
+  - [x] Copy logic from existing send_message tool
+  - [x] Add channel permission validation
+  - [x] Implement message sending with reply support
+  - [x] Add proper error handling and logging
+  - [x] Ensure exact same response format
 
-- [ ] **Implement `send_direct_message()` method**
-  - [ ] Copy logic from existing send_dm tool
-  - [ ] Add user validation and error handling
-  - [ ] Implement DM sending functionality
-  - [ ] Add proper error handling and logging
-  - [ ] Ensure exact same response format
+- [x] **Implement `send_direct_message()` method**
+  - [x] Copy logic from existing send_dm tool
+  - [x] Add user validation and error handling
+  - [x] Implement DM sending functionality
+  - [x] Add proper error handling and logging
+  - [x] Ensure exact same response format
 
-- [ ] **Implement `read_direct_messages()` method**
-  - [ ] Copy logic from existing read_direct_messages tool
-  - [ ] Add user validation and limit handling
-  - [ ] Implement DM reading functionality
-  - [ ] Add proper error handling and logging
-  - [ ] Ensure exact same response format
+- [x] **Implement `read_direct_messages()` method**
+  - [x] Copy logic from existing read_direct_messages tool
+  - [x] Add user validation and limit handling
+  - [x] Implement DM reading functionality
+  - [x] Add proper error handling and logging
+  - [x] Ensure exact same response format
 
-- [ ] **Implement `delete_message()` method**
-  - [ ] Copy logic from existing delete_message tool
-  - [ ] Add permission validation
-  - [ ] Implement message deletion functionality
-  - [ ] Add proper error handling and logging
-  - [ ] Ensure exact same response format
+- [x] **Implement `delete_message()` method**
+  - [x] Copy logic from existing delete_message tool
+  - [x] Add permission validation
+  - [x] Implement message deletion functionality
+  - [x] Add proper error handling and logging
+  - [x] Ensure exact same response format
 
-- [ ] **Implement `edit_message()` method**
-  - [ ] Copy logic from existing edit_message tool
-  - [ ] Add permission validation (bot's own messages only)
-  - [ ] Implement message editing functionality
-  - [ ] Add proper error handling and logging
-  - [ ] Ensure exact same response format
+- [x] **Implement `edit_message()` method**
+  - [x] Copy logic from existing edit_message tool
+  - [x] Add permission validation (bot's own messages only)
+  - [x] Implement message editing functionality
+  - [x] Add proper error handling and logging
+  - [x] Ensure exact same response format
 
 ### 2.6 Service Method Unit Tests
-- [ ] **Create comprehensive unit tests for all service methods**
-  - [ ] Test `get_guilds_formatted()` success scenarios
-  - [ ] Test `get_guilds_formatted()` error scenarios (API errors, permissions)
-  - [ ] Test `get_channels_formatted()` success scenarios
-  - [ ] Test `get_channels_formatted()` error scenarios (404, permissions)
-  - [ ] Test `get_messages_formatted()` success scenarios
-  - [ ] Test `get_messages_formatted()` error scenarios (404, permissions)
-  - [ ] Test `get_user_info_formatted()` success and error scenarios
-  - [ ] Test all messaging operations (send_message, send_dm, etc.)
-  - [ ] Test error handling methods in isolation
-  - [ ] Test permission validation methods
-  - [ ] Achieve 95%+ test coverage for DiscordService
+- [x] **Create comprehensive unit tests for all service methods**
+  - [x] Test `get_guilds_formatted()` success scenarios
+  - [x] Test `get_guilds_formatted()` error scenarios (API errors, permissions)
+  - [x] Test `get_channels_formatted()` success scenarios
+  - [x] Test `get_channels_formatted()` error scenarios (404, permissions)
+  - [x] Test `get_messages_formatted()` success scenarios
+  - [x] Test `get_messages_formatted()` error scenarios (404, permissions)
+  - [x] Test `get_user_info_formatted()` success and error scenarios
+  - [x] Test all messaging operations (send_message, send_dm, etc.)
+  - [x] Test error handling methods in isolation
+  - [x] Test permission validation methods
+  - [x] Achieve 95%+ test coverage for DiscordService
 
 ### 2.7 Integration Testing Preparation
 - [ ] **Create service integration test fixtures**
