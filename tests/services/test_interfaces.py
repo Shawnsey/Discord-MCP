@@ -35,6 +35,10 @@ class TestIDiscordServiceInterface:
             "read_direct_messages",
             "delete_message",
             "edit_message",
+            "timeout_user",
+            "untimeout_user",
+            "kick_user",
+            "ban_user",
         }
 
         abstract_methods = IDiscordService.__abstractmethods__
@@ -218,6 +222,26 @@ class TestAbstractBaseClassBehavior:
 
             async def edit_message(
                 self, channel_id: str, message_id: str, new_content: str
+            ) -> str:
+                return "test"
+
+            async def timeout_user(
+                self, guild_id: str, user_id: str, duration_minutes: int, reason=None
+            ) -> str:
+                return "test"
+
+            async def untimeout_user(
+                self, guild_id: str, user_id: str, reason=None
+            ) -> str:
+                return "test"
+
+            async def kick_user(
+                self, guild_id: str, user_id: str, reason=None
+            ) -> str:
+                return "test"
+
+            async def ban_user(
+                self, guild_id: str, user_id: str, reason=None, delete_message_days=0
             ) -> str:
                 return "test"
 

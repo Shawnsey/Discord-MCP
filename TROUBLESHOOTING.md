@@ -167,7 +167,77 @@ This guide covers common issues and their solutions when using the Discord MCP S
    asyncio.run(test_channel("YOUR_CHANNEL_ID"))
    ```
 
-### 6. Environment and Dependencies
+### 6. Moderation Issues
+
+#### Problem: "Role Hierarchy Violation" or "Cannot Moderate User"
+**Symptoms:**
+- Moderation commands fail with hierarchy errors
+- Bot can't timeout, kick, or ban certain users
+- "Missing permissions" for moderation actions
+
+**Solutions:**
+1. **Check Bot Role Position**
+   - In Discord server settings → Roles
+   - Ensure bot's role is positioned higher than target user's highest role
+   - Server owners cannot be moderated by bots
+
+2. **Verify Moderation Permissions**
+   ```bash
+   # Required permissions for moderation:
+   # - moderate_members (for timeout/untimeout)
+   # - kick_members (for kick)
+   # - ban_members (for ban)
+   ```
+
+3. **Test Moderation Permissions**
+   ```python
+   # Test script to check moderation capabilities
+   import asyncio
+   from src.discord_mcp.discord_client import DiscordClient
+   from src.discord_mcp.config import get_settings
+   
+   async def test_moderation_permissions(guild_id):
+       client = DiscordClient(get_settings())
+       await client.start()
+       try:
+           # This will show what permissions the bot has
+           guild = await client.get_guild(guild_id)
+           print(f"Bot permissions in {guild['name']}: {guild.get('permissions', 'Unknown')}")
+       except Exception as e:
+           print(f"❌ Cannot check permissions: {e}")
+       await client.close()
+   
+   asyncio.run(test_moderation_permissions("YOUR_GUILD_ID"))
+   ```
+
+4. **Common Moderation Errors and Solutions**
+   - **"User not found"**: User may have left the server
+   - **"Already banned"**: User is already banned, use different action
+   - **"Not timed out"**: User isn't currently timed out, can't remove timeout
+   - **"Invalid duration"**: Timeout must be 1 minute to 28 days
+   - **"Invalid delete days"**: Ban message deletion must be 0-7 days
+
+#### Problem: Moderation Actions Fail Silently
+**Symptoms:**
+- Commands appear to succeed but no action taken
+- No error messages but user isn't moderated
+
+**Solutions:**
+1. **Enable Debug Logging**
+   ```bash
+   export LOG_LEVEL=DEBUG
+   python -m discord_mcp
+   ```
+
+2. **Check Discord Audit Log**
+   - In Discord: Server Settings → Audit Log
+   - Look for bot actions to confirm they're being executed
+
+3. **Verify Target User Status**
+   - Ensure user is still in the server
+   - Check if user already has the status you're trying to apply
+
+### 7. Environment and Dependencies
 
 #### Problem: Import Errors or Missing Dependencies
 **Symptoms:**

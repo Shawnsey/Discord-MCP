@@ -6,6 +6,7 @@ centralizing all Discord API operations and eliminating code duplication between
 tools and resources.
 """
 
+from datetime import datetime, timedelta
 from typing import Optional
 
 import structlog
@@ -1091,3 +1092,677 @@ class DiscordService(IDiscordService):
             str: Formatted permission denied message
         """
         return f"# Access Denied\n\nAccess to guild containing channel `{channel_id}` is not permitted."
+
+    async def timeout_user(
+        self, guild_id: str, user_id: str, duration_minutes: int, reason: Optional[str] = None
+    ) -> str:
+        """
+        Timeout a user in a Discord server for a specified duration.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to timeout
+            duration_minutes: Duration of timeout in minutes (1-40320, max 28 days)
+            reason: Optional reason for the timeout
+
+        Returns:
+            str: Success message with timeout details or error message
+        """
+        try:
+            self._logger.info(
+                "Timing out user",
+                guild_id=guild_id,
+                user_id=user_id,
+                duration_minutes=duration_minutes,
+                reason=reason,
+            )
+
+            # Input validation for duration (1 minute to 28 days maximum)
+            if duration_minutes < 1:
+                return "❌ Error: Timeout duration must be at least 1 minute."
+            
+            max_duration_minutes = 28 * 24 * 60  # 28 days in minutes (40320)
+            if duration_minutes > max_duration_minutes:
+                return f"❌ Error: Timeout duration cannot exceed 28 days ({max_duration_minutes} minutes). Provided: {duration_minutes} minutes."
+
+            # Check if guild is allowed
+            if not self._validate_guild_permission(guild_id):
+                return self._get_guild_permission_denied_message(guild_id)
+
+            # Get guild information to validate access and get guild name
+            try:
+                guild = await self._discord_client.get_guild(guild_id)
+                guild_name = guild["name"]
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: Guild `{guild_id}` not found or bot has no access."
+                elif e.status_code == 403:
+                    return f"❌ Error: Bot does not have permission to access guild `{guild_id}`."
+                else:
+                    return f"❌ Error: Failed to access guild: {str(e)}"
+
+            # Get user information to validate and get username
+            try:
+                user = await self._discord_client.get_user(user_id)
+                username = user.get("username", "Unknown User")
+                display_name = user.get("global_name") or username
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` not found."
+                else:
+                    return f"❌ Error: Failed to get user information: {str(e)}"
+
+            # Validate role hierarchy before attempting moderation action
+            hierarchy_error = await self._validate_role_hierarchy(
+                guild_id, user_id, guild_name, display_name
+            )
+            if hierarchy_error:
+                return hierarchy_error
+
+            # Calculate timeout end time using datetime and timedelta
+            timeout_until = datetime.utcnow() + timedelta(minutes=duration_minutes)
+            timeout_until_iso = timeout_until.isoformat() + "Z"
+
+            # Call Discord API to set communication_disabled_until field
+            try:
+                await self._discord_client.edit_guild_member(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    communication_disabled_until=timeout_until_iso,
+                    reason=reason
+                )
+
+                # Format success response
+                success_msg = f"✅ User timed out successfully!"
+                success_msg += f"\n- **User**: {display_name} (`{user_id}`)"
+                success_msg += f"\n- **Guild**: {guild_name} (`{guild_id}`)"
+                success_msg += f"\n- **Duration**: {duration_minutes} minutes"
+                if reason:
+                    success_msg += f"\n- **Reason**: {reason}"
+                success_msg += f"\n- **Expires**: {timeout_until.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+
+                # Add structured logging
+                self._logger.info(
+                    "User timeout completed successfully",
+                    action="timeout",
+                    guild_id=guild_id,
+                    guild_name=guild_name,
+                    target_user_id=user_id,
+                    target_username=username,
+                    moderator_context="mcp_tool",
+                    duration_minutes=duration_minutes,
+                    reason=reason,
+                    expires_at=timeout_until_iso,
+                    success=True,
+                )
+
+                return success_msg
+
+            except DiscordAPIError as e:
+                if e.status_code == 403:
+                    # Check specific permission error scenarios
+                    if "Missing Permissions" in str(e) or "moderate_members" in str(e).lower():
+                        return f"❌ Error: Bot does not have 'moderate_members' permission in {guild_name}."
+                    else:
+                        return f"❌ Error: Bot does not have permission to timeout users in {guild_name}. Role hierarchy may prevent this action."
+                elif e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` is not a member of {guild_name}."
+                elif e.status_code == 400:
+                    return f"❌ Error: Invalid timeout request. User may already be timed out or parameters are invalid."
+                else:
+                    return f"❌ Error: Failed to timeout user: {str(e)}"
+
+        except Exception as e:
+            error_msg = f"❌ Unexpected error while timing out user: {str(e)}"
+            self._logger.error(
+                "Unexpected error in timeout_user",
+                guild_id=guild_id,
+                user_id=user_id,
+                duration_minutes=duration_minutes,
+                error=str(e),
+            )
+            return error_msg
+
+    async def untimeout_user(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None
+    ) -> str:
+        """
+        Remove timeout from a user in a Discord server.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to remove timeout from
+            reason: Optional reason for removing the timeout
+
+        Returns:
+            str: Success message or error message
+        """
+        try:
+            self._logger.info(
+                "Removing timeout from user",
+                guild_id=guild_id,
+                user_id=user_id,
+                reason=reason,
+            )
+
+            # Check if guild is allowed
+            if not self._validate_guild_permission(guild_id):
+                return self._get_guild_permission_denied_message(guild_id)
+
+            # Get guild information to validate access and get guild name
+            try:
+                guild = await self._discord_client.get_guild(guild_id)
+                guild_name = guild["name"]
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: Guild `{guild_id}` not found or bot has no access."
+                elif e.status_code == 403:
+                    return f"❌ Error: Bot does not have permission to access guild `{guild_id}`."
+                else:
+                    return f"❌ Error: Failed to access guild: {str(e)}"
+
+            # Get user information to validate and get username
+            try:
+                user = await self._discord_client.get_user(user_id)
+                username = user.get("username", "Unknown User")
+                display_name = user.get("global_name") or username
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` not found."
+                else:
+                    return f"❌ Error: Failed to get user information: {str(e)}"
+
+            # Validate role hierarchy before attempting moderation action
+            hierarchy_error = await self._validate_role_hierarchy(
+                guild_id, user_id, guild_name, display_name
+            )
+            if hierarchy_error:
+                return hierarchy_error
+
+            # Check if user is currently timed out before attempting removal
+            try:
+                member = await self._discord_client.get_guild_member(guild_id, user_id)
+                communication_disabled_until = member.get("communication_disabled_until")
+                
+                if not communication_disabled_until:
+                    return f"ℹ️ User {display_name} is not currently timed out in {guild_name}."
+                
+                # Parse the timeout end time to show when it would have expired
+                try:
+                    from datetime import datetime
+                    timeout_end = datetime.fromisoformat(communication_disabled_until.replace("Z", "+00:00"))
+                    timeout_end_str = timeout_end.strftime('%Y-%m-%d %H:%M:%S UTC')
+                except:
+                    timeout_end_str = "unknown time"
+                    
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` is not a member of {guild_name}."
+                else:
+                    return f"❌ Error: Failed to get member information: {str(e)}"
+
+            # Call Discord API to clear communication_disabled_until field
+            try:
+                await self._discord_client.edit_guild_member(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    communication_disabled_until=None,
+                    reason=reason
+                )
+
+                # Format success response
+                success_msg = f"✅ User timeout removed successfully!"
+                success_msg += f"\n- **User**: {display_name} (`{user_id}`)"
+                success_msg += f"\n- **Guild**: {guild_name} (`{guild_id}`)"
+                success_msg += f"\n- **Previous timeout expiry**: {timeout_end_str}"
+                if reason:
+                    success_msg += f"\n- **Reason**: {reason}"
+
+                # Add structured logging
+                self._logger.info(
+                    "User timeout removal completed successfully",
+                    action="untimeout",
+                    guild_id=guild_id,
+                    guild_name=guild_name,
+                    target_user_id=user_id,
+                    target_username=username,
+                    moderator_context="mcp_tool",
+                    reason=reason,
+                    previous_timeout_expiry=timeout_end_str,
+                    success=True,
+                )
+
+                return success_msg
+
+            except DiscordAPIError as e:
+                if e.status_code == 403:
+                    # Check specific permission error scenarios
+                    if "Missing Permissions" in str(e) or "moderate_members" in str(e).lower():
+                        return f"❌ Error: Bot does not have 'moderate_members' permission in {guild_name}."
+                    else:
+                        return f"❌ Error: Bot does not have permission to remove timeouts in {guild_name}. Role hierarchy may prevent this action."
+                elif e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` is not a member of {guild_name}."
+                elif e.status_code == 400:
+                    return f"❌ Error: Invalid untimeout request. Parameters may be invalid."
+                else:
+                    return f"❌ Error: Failed to remove timeout: {str(e)}"
+
+        except Exception as e:
+            error_msg = f"❌ Unexpected error while removing timeout: {str(e)}"
+            self._logger.error(
+                "Unexpected error in untimeout_user",
+                guild_id=guild_id,
+                user_id=user_id,
+                error=str(e),
+            )
+            return error_msg
+
+    async def kick_user(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None
+    ) -> str:
+        """
+        Kick a user from a Discord server.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to kick
+            reason: Optional reason for the kick
+
+        Returns:
+            str: Success message or error message
+        """
+        try:
+            self._logger.info(
+                "Kicking user from guild",
+                guild_id=guild_id,
+                user_id=user_id,
+                reason=reason,
+            )
+
+            # Check if guild is allowed
+            if not self._validate_guild_permission(guild_id):
+                return self._get_guild_permission_denied_message(guild_id)
+
+            # Get guild information to validate access and get guild name
+            try:
+                guild = await self._discord_client.get_guild(guild_id)
+                guild_name = guild["name"]
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: Guild `{guild_id}` not found or bot has no access."
+                elif e.status_code == 403:
+                    return f"❌ Error: Bot does not have permission to access guild `{guild_id}`."
+                else:
+                    return f"❌ Error: Failed to access guild: {str(e)}"
+
+            # Get user information to validate and get username
+            try:
+                user = await self._discord_client.get_user(user_id)
+                username = user.get("username", "Unknown User")
+                display_name = user.get("global_name") or username
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` not found."
+                else:
+                    return f"❌ Error: Failed to get user information: {str(e)}"
+
+            # Verify target user exists in guild before attempting kick
+            try:
+                member = await self._discord_client.get_guild_member(guild_id, user_id)
+                # If we get here, the user is a member of the guild
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` is not a member of {guild_name}."
+                else:
+                    return f"❌ Error: Failed to get member information: {str(e)}"
+
+            # Validate role hierarchy before attempting moderation action
+            hierarchy_error = await self._validate_role_hierarchy(
+                guild_id, user_id, guild_name, display_name
+            )
+            if hierarchy_error:
+                return hierarchy_error
+
+            # Call Discord API kick endpoint with proper reason parameter
+            try:
+                await self._discord_client.kick_guild_member(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    reason=reason
+                )
+
+                # Format success response
+                success_msg = f"✅ User kicked successfully!"
+                success_msg += f"\n- **User**: {display_name} (`{user_id}`)"
+                success_msg += f"\n- **Guild**: {guild_name} (`{guild_id}`)"
+                if reason:
+                    success_msg += f"\n- **Reason**: {reason}"
+
+                # Add structured logging and audit log integration
+                self._logger.info(
+                    "User kick completed successfully",
+                    action="kick",
+                    guild_id=guild_id,
+                    guild_name=guild_name,
+                    target_user_id=user_id,
+                    target_username=username,
+                    moderator_context="mcp_tool",
+                    reason=reason,
+                    success=True,
+                )
+
+                return success_msg
+
+            except DiscordAPIError as e:
+                if e.status_code == 403:
+                    # Check specific permission error scenarios
+                    if "Missing Permissions" in str(e) or "kick_members" in str(e).lower():
+                        return f"❌ Error: Bot does not have 'kick_members' permission in {guild_name}."
+                    else:
+                        return f"❌ Error: Bot does not have permission to kick users in {guild_name}. Role hierarchy may prevent this action."
+                elif e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` is not a member of {guild_name}."
+                elif e.status_code == 400:
+                    return f"❌ Error: Invalid kick request. Parameters may be invalid."
+                else:
+                    return f"❌ Error: Failed to kick user: {str(e)}"
+
+        except Exception as e:
+            error_msg = f"❌ Unexpected error while kicking user: {str(e)}"
+            self._logger.error(
+                "Unexpected error in kick_user",
+                guild_id=guild_id,
+                user_id=user_id,
+                error=str(e),
+            )
+            return error_msg
+
+    async def ban_user(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None, delete_message_days: int = 0
+    ) -> str:
+        """
+        Ban a user from a Discord server with optional message deletion.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to ban
+            reason: Optional reason for the ban
+            delete_message_days: Number of days of messages to delete (0-7, default: 0)
+
+        Returns:
+            str: Success message or error message
+        """
+        try:
+            self._logger.info(
+                "Banning user from guild",
+                guild_id=guild_id,
+                user_id=user_id,
+                reason=reason,
+                delete_message_days=delete_message_days,
+            )
+
+            # Validate delete_message_days parameter (0-7 range)
+            if delete_message_days < 0 or delete_message_days > 7:
+                return f"❌ Error: delete_message_days must be between 0 and 7 (got {delete_message_days})."
+
+            # Check if guild is allowed
+            if not self._validate_guild_permission(guild_id):
+                return self._get_guild_permission_denied_message(guild_id)
+
+            # Get guild information to validate access and get guild name
+            try:
+                guild = await self._discord_client.get_guild(guild_id)
+                guild_name = guild["name"]
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: Guild `{guild_id}` not found or bot has no access."
+                elif e.status_code == 403:
+                    return f"❌ Error: Bot does not have permission to access guild `{guild_id}`."
+                else:
+                    return f"❌ Error: Failed to access guild: {str(e)}"
+
+            # Get user information to validate and get username
+            try:
+                user = await self._discord_client.get_user(user_id)
+                username = user.get("username", "Unknown User")
+                display_name = user.get("global_name") or username
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{user_id}` not found."
+                else:
+                    return f"❌ Error: Failed to get user information: {str(e)}"
+
+            # Check if user is already banned (handle already-banned user scenarios)
+            try:
+                ban_info = await self._discord_client.get(f"/guilds/{guild_id}/bans/{user_id}")
+                if ban_info:
+                    return f"❌ Error: User `{display_name}` (`{user_id}`) is already banned from {guild_name}."
+            except DiscordAPIError as e:
+                # 404 means user is not banned, which is what we want
+                if e.status_code != 404:
+                    # Other errors might indicate permission issues, but we'll continue and let the ban attempt handle it
+                    self._logger.warning(
+                        "Could not check ban status",
+                        guild_id=guild_id,
+                        user_id=user_id,
+                        error=str(e),
+                    )
+
+            # Validate role hierarchy before attempting moderation action
+            # Note: For bans, we can ban users who are not currently in the guild,
+            # so we only validate hierarchy if the user is a current member
+            try:
+                await self._discord_client.get_guild_member(guild_id, user_id)
+                # User is a member, validate hierarchy
+                hierarchy_error = await self._validate_role_hierarchy(
+                    guild_id, user_id, guild_name, display_name
+                )
+                if hierarchy_error:
+                    return hierarchy_error
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    # User is not a member, skip hierarchy validation for bans
+                    self._logger.debug(
+                        "Skipping hierarchy validation for ban - user not in guild",
+                        guild_id=guild_id,
+                        user_id=user_id,
+                    )
+                else:
+                    # Other error getting member info, log but continue
+                    self._logger.warning(
+                        "Could not get member info for hierarchy validation",
+                        guild_id=guild_id,
+                        user_id=user_id,
+                        error=str(e),
+                    )
+
+            # Call Discord API ban endpoint with reason and message deletion parameters
+            try:
+                await self._discord_client.ban_guild_member(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    reason=reason,
+                    delete_message_days=delete_message_days
+                )
+
+                # Format success response
+                success_msg = f"✅ User banned successfully!"
+                success_msg += f"\n- **User**: {display_name} (`{user_id}`)"
+                success_msg += f"\n- **Guild**: {guild_name} (`{guild_id}`)"
+                if reason:
+                    success_msg += f"\n- **Reason**: {reason}"
+                if delete_message_days > 0:
+                    success_msg += f"\n- **Message Deletion**: {delete_message_days} day(s) of messages deleted"
+                else:
+                    success_msg += f"\n- **Message Deletion**: No messages deleted"
+
+                # Add structured logging and audit log integration
+                self._logger.info(
+                    "User ban completed successfully",
+                    action="ban",
+                    guild_id=guild_id,
+                    guild_name=guild_name,
+                    target_user_id=user_id,
+                    target_username=username,
+                    moderator_context="mcp_tool",
+                    reason=reason,
+                    delete_message_days=delete_message_days,
+                    success=True,
+                )
+
+                return success_msg
+
+            except DiscordAPIError as e:
+                if e.status_code == 403:
+                    # Check specific permission error scenarios
+                    if "Missing Permissions" in str(e) or "ban_members" in str(e).lower():
+                        return f"❌ Error: Bot does not have 'ban_members' permission in {guild_name}."
+                    else:
+                        return f"❌ Error: Bot does not have permission to ban users in {guild_name}. Role hierarchy may prevent this action."
+                elif e.status_code == 404:
+                    return f"❌ Error: Guild `{guild_id}` or user `{user_id}` not found."
+                elif e.status_code == 400:
+                    return f"❌ Error: Invalid ban request. Parameters may be invalid."
+                else:
+                    return f"❌ Error: Failed to ban user: {str(e)}"
+
+        except Exception as e:
+            error_msg = f"❌ Unexpected error while banning user: {str(e)}"
+            self._logger.error(
+                "Unexpected error in ban_user",
+                guild_id=guild_id,
+                user_id=user_id,
+                error=str(e),
+            )
+            return error_msg
+
+    async def _validate_role_hierarchy(
+        self, guild_id: str, target_user_id: str, guild_name: str, target_username: str
+    ) -> Optional[str]:
+        """
+        Validate role hierarchy for moderation actions.
+        
+        Checks that the bot's highest role is higher than the target user's highest role,
+        following Discord's hierarchy rules where lower position numbers indicate higher roles.
+        
+        Args:
+            guild_id: The Discord guild ID
+            target_user_id: The target user ID to check hierarchy against
+            guild_name: The guild name for error messages
+            target_username: The target username for error messages
+            
+        Returns:
+            Optional[str]: Error message if hierarchy validation fails, None if validation passes
+        """
+        try:
+            # Get bot's member information in the guild
+            try:
+                bot_user = await self._discord_client.get_current_user()
+                bot_user_id = bot_user["id"]
+                bot_member = await self._discord_client.get_guild_member(guild_id, bot_user_id)
+            except DiscordAPIError as e:
+                self._logger.error(
+                    "Failed to get bot member information for hierarchy validation",
+                    guild_id=guild_id,
+                    bot_user_id=bot_user_id,
+                    error=str(e),
+                )
+                return f"❌ Error: Could not validate bot permissions in {guild_name}."
+
+            # Get target user's member information in the guild
+            try:
+                target_member = await self._discord_client.get_guild_member(guild_id, target_user_id)
+            except DiscordAPIError as e:
+                if e.status_code == 404:
+                    return f"❌ Error: User `{target_username}` (`{target_user_id}`) is not a member of {guild_name}."
+                else:
+                    self._logger.error(
+                        "Failed to get target member information for hierarchy validation",
+                        guild_id=guild_id,
+                        target_user_id=target_user_id,
+                        error=str(e),
+                    )
+                    return f"❌ Error: Could not validate target user permissions in {guild_name}."
+
+            # Get guild information to access roles
+            try:
+                guild_info = await self._discord_client.get_guild(guild_id)
+                guild_roles = guild_info.get("roles", [])
+            except DiscordAPIError as e:
+                self._logger.error(
+                    "Failed to get guild roles for hierarchy validation",
+                    guild_id=guild_id,
+                    error=str(e),
+                )
+                return f"❌ Error: Could not validate role hierarchy in {guild_name}."
+
+            # Create a mapping of role ID to role data for quick lookup
+            role_map = {role["id"]: role for role in guild_roles}
+
+            # Get bot's highest role position
+            bot_role_ids = bot_member.get("roles", [])
+            bot_highest_position = -1  # Default position for @everyone role
+            
+            for role_id in bot_role_ids:
+                role = role_map.get(role_id)
+                if role:
+                    # Lower position numbers indicate higher roles in Discord
+                    if bot_highest_position == -1 or role["position"] > bot_highest_position:
+                        bot_highest_position = role["position"]
+
+            # Get target user's highest role position
+            target_role_ids = target_member.get("roles", [])
+            target_highest_position = -1  # Default position for @everyone role
+            
+            for role_id in target_role_ids:
+                role = role_map.get(role_id)
+                if role:
+                    # Lower position numbers indicate higher roles in Discord
+                    if target_highest_position == -1 or role["position"] > target_highest_position:
+                        target_highest_position = role["position"]
+
+            # Check if bot can moderate the target user
+            # Bot must have a higher role position than the target user
+            if bot_highest_position <= target_highest_position:
+                # Find the names of the highest roles for better error messaging
+                bot_highest_role_name = "@everyone"
+                target_highest_role_name = "@everyone"
+                
+                for role_id in bot_role_ids:
+                    role = role_map.get(role_id)
+                    if role and role["position"] == bot_highest_position:
+                        bot_highest_role_name = role["name"]
+                        break
+                        
+                for role_id in target_role_ids:
+                    role = role_map.get(role_id)
+                    if role and role["position"] == target_highest_position:
+                        target_highest_role_name = role["name"]
+                        break
+
+                return (
+                    f"❌ Error: Cannot moderate `{target_username}` due to role hierarchy restrictions.\n"
+                    f"- **Bot's highest role**: {bot_highest_role_name} (position {bot_highest_position})\n"
+                    f"- **Target user's highest role**: {target_highest_role_name} (position {target_highest_position})\n"
+                    f"- **Requirement**: Bot's role must be higher than target user's role"
+                )
+
+            # Hierarchy validation passed
+            self._logger.debug(
+                "Role hierarchy validation passed",
+                guild_id=guild_id,
+                target_user_id=target_user_id,
+                bot_highest_position=bot_highest_position,
+                target_highest_position=target_highest_position,
+            )
+            return None
+
+        except Exception as e:
+            self._logger.error(
+                "Unexpected error during role hierarchy validation",
+                guild_id=guild_id,
+                target_user_id=target_user_id,
+                error=str(e),
+            )
+            return f"❌ Error: Could not validate role hierarchy: {str(e)}"

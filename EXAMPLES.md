@@ -218,6 +218,57 @@ result = await client.call_tool("edit_message", {
 })
 ```
 
+### 4. User Moderation
+
+```python
+# Timeout a user for 30 minutes
+result = await client.call_tool("timeout_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "222222222222222222",
+    "duration_minutes": 30,
+    "reason": "Disruptive behavior in chat"
+})
+
+print(f"Timeout result: {result}")
+
+# Timeout a user with default duration (10 minutes)
+result = await client.call_tool("timeout_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "222222222222222222",
+    "reason": "Spam messages"
+})
+
+# Remove timeout from a user
+result = await client.call_tool("untimeout_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "222222222222222222",
+    "reason": "Timeout period served, user apologized"
+})
+
+# Kick a user from the server
+result = await client.call_tool("kick_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "333333333333333333",
+    "reason": "Violation of server rules - first offense"
+})
+
+# Ban a user from the server with message deletion
+result = await client.call_tool("ban_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "444444444444444444",
+    "reason": "Repeated rule violations and harassment",
+    "delete_message_days": 1  # Delete messages from last 1 day
+})
+
+# Ban a user without deleting messages
+result = await client.call_tool("ban_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "555555555555555555",
+    "reason": "Serious rule violation"
+    # delete_message_days defaults to 0 (no deletion)
+})
+```
+
 ## Advanced Scenarios
 
 ### 1. Channel Monitoring and Response
@@ -409,6 +460,149 @@ async def moderation_bot():
                     })
                     
                     print(f"Moderated message from {message['author']['username']}")
+
+async def advanced_moderation_system():
+    """Advanced moderation system with escalating punishments."""
+    
+    # Track user violations (in production, use persistent storage)
+    user_violations = {}
+    
+    # Moderation rules
+    rules = {
+        "spam": {"timeout": 10, "kick_threshold": 3, "ban_threshold": 5},
+        "harassment": {"timeout": 30, "kick_threshold": 2, "ban_threshold": 3},
+        "inappropriate": {"timeout": 60, "kick_threshold": 2, "ban_threshold": 4}
+    }
+    
+    guild_id = "123456789012345678"
+    
+    # Get recent messages from all channels
+    channels = await client.read_resource(f"channels://{guild_id}")
+    
+    for channel in channels:
+        if channel["type"] != "text":
+            continue
+            
+        messages = await client.read_resource(f"messages://{channel['id']}")
+        
+        for message in messages:
+            user_id = message["author"]["id"]
+            content = message["content"].lower()
+            
+            # Check for rule violations
+            for rule_type, rule_config in rules.items():
+                if rule_type in content:
+                    # Track violation
+                    if user_id not in user_violations:
+                        user_violations[user_id] = {}
+                    if rule_type not in user_violations[user_id]:
+                        user_violations[user_id][rule_type] = 0
+                    
+                    user_violations[user_id][rule_type] += 1
+                    violation_count = user_violations[user_id][rule_type]
+                    
+                    # Delete the offending message
+                    await client.call_tool("delete_message", {
+                        "channel_id": channel["id"],
+                        "message_id": message["id"]
+                    })
+                    
+                    # Apply escalating punishment
+                    if violation_count >= rule_config["ban_threshold"]:
+                        # Ban user
+                        await client.call_tool("ban_user", {
+                            "guild_id": guild_id,
+                            "user_id": user_id,
+                            "reason": f"Repeated {rule_type} violations ({violation_count} times)",
+                            "delete_message_days": 1
+                        })
+                        print(f"🔨 Banned user {user_id} for repeated {rule_type}")
+                        
+                    elif violation_count >= rule_config["kick_threshold"]:
+                        # Kick user
+                        await client.call_tool("kick_user", {
+                            "guild_id": guild_id,
+                            "user_id": user_id,
+                            "reason": f"Multiple {rule_type} violations ({violation_count} times)"
+                        })
+                        print(f"👢 Kicked user {user_id} for {rule_type}")
+                        
+                    else:
+                        # Timeout user
+                        await client.call_tool("timeout_user", {
+                            "guild_id": guild_id,
+                            "user_id": user_id,
+                            "duration_minutes": rule_config["timeout"],
+                            "reason": f"{rule_type.title()} violation (warning {violation_count})"
+                        })
+                        print(f"⏰ Timed out user {user_id} for {rule_config['timeout']} minutes")
+                    
+                    # Send DM with violation notice
+                    await client.call_tool("send_dm", {
+                        "user_id": user_id,
+                        "content": f"Your message was removed for {rule_type}. "
+                                 f"This is violation #{violation_count}. "
+                                 f"Please review the server rules."
+                    })
+                    
+                    break  # Only process first rule violation per message
+
+async def moderation_dashboard():
+    """Create a moderation dashboard with server statistics."""
+    
+    guild_id = "123456789012345678"
+    
+    # Get guild information
+    guilds = await client.read_resource("guilds://")
+    guild = next((g for g in guilds if g["id"] == guild_id), None)
+    
+    if not guild:
+        print("Guild not found")
+        return
+    
+    # Get channels and recent activity
+    channels = await client.read_resource(f"channels://{guild_id}")
+    text_channels = [ch for ch in channels if ch["type"] == "text"]
+    
+    total_messages = 0
+    active_users = set()
+    
+    for channel in text_channels:
+        messages = await client.read_resource(f"messages://{channel['id']}")
+        total_messages += len(messages)
+        
+        for message in messages:
+            active_users.add(message["author"]["id"])
+    
+    # Create dashboard report
+    dashboard = f"""
+**🛡️ Moderation Dashboard - {guild['name']}**
+
+**Server Statistics:**
+- Total Members: {guild.get('member_count', 'Unknown')}
+- Text Channels: {len(text_channels)}
+- Recent Messages: {total_messages}
+- Active Users: {len(active_users)}
+
+**Channel Activity:**
+"""
+    
+    for channel in text_channels[:5]:  # Top 5 channels
+        messages = await client.read_resource(f"messages://{channel['id']}")
+        dashboard += f"- #{channel['name']}: {len(messages)} recent messages\n"
+    
+    from datetime import datetime
+    dashboard += f"\n**Report Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    # Send dashboard to a moderation channel
+    mod_channel = next((ch for ch in text_channels if "mod" in ch["name"].lower()), text_channels[0])
+    
+    await client.call_tool("send_message", {
+        "channel_id": mod_channel["id"],
+        "content": dashboard
+    })
+    
+    print("📊 Moderation dashboard sent")
 ```
 
 ## Error Handling
@@ -485,6 +679,162 @@ async def rate_limited_operations():
                 print(f"Other error: {e}")
 ```
 
+### 3. Moderation Error Handling
+
+```python
+async def safe_moderation_action(action_type, guild_id, user_id, **kwargs):
+    """Safely perform moderation actions with comprehensive error handling."""
+    
+    try:
+        if action_type == "timeout":
+            result = await client.call_tool("timeout_user", {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                **kwargs
+            })
+        elif action_type == "untimeout":
+            result = await client.call_tool("untimeout_user", {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                **kwargs
+            })
+        elif action_type == "kick":
+            result = await client.call_tool("kick_user", {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                **kwargs
+            })
+        elif action_type == "ban":
+            result = await client.call_tool("ban_user", {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                **kwargs
+            })
+        else:
+            raise ValueError(f"Unknown action type: {action_type}")
+            
+        print(f"✅ {action_type.title()} successful: {result}")
+        return True
+        
+    except Exception as e:
+        error_msg = str(e).lower()
+        
+        if "role hierarchy" in error_msg:
+            print(f"❌ Cannot {action_type} user: Bot role is not high enough")
+        elif "missing permissions" in error_msg:
+            print(f"❌ Cannot {action_type} user: Bot lacks required permissions")
+        elif "user not found" in error_msg:
+            print(f"❌ Cannot {action_type} user: User not found in server")
+        elif "already banned" in error_msg:
+            print(f"❌ Cannot ban user: User is already banned")
+        elif "not timed out" in error_msg:
+            print(f"❌ Cannot remove timeout: User is not currently timed out")
+        elif "invalid duration" in error_msg:
+            print(f"❌ Cannot timeout user: Duration must be between 1 minute and 28 days")
+        elif "rate limit" in error_msg:
+            print(f"⏳ Rate limited, waiting before retry...")
+            await asyncio.sleep(5)
+            return await safe_moderation_action(action_type, guild_id, user_id, **kwargs)
+        else:
+            print(f"❌ Unexpected error during {action_type}: {e}")
+        
+        return False
+
+# Usage examples
+async def moderation_examples():
+    """Examples of safe moderation with error handling."""
+    
+    guild_id = "123456789012345678"
+    user_id = "987654321098765432"
+    
+    # Safe timeout with error handling
+    success = await safe_moderation_action(
+        "timeout", guild_id, user_id,
+        duration_minutes=30,
+        reason="Disruptive behavior"
+    )
+    
+    if success:
+        print("User timed out successfully")
+    else:
+        print("Failed to timeout user, trying alternative action...")
+        # Maybe just send a warning DM instead
+        await client.call_tool("send_dm", {
+            "user_id": user_id,
+            "content": "Please follow server rules. This is a warning."
+        })
+    
+    # Safe kick with fallback
+    success = await safe_moderation_action(
+        "kick", guild_id, user_id,
+        reason="Rule violation"
+    )
+    
+    if not success:
+        print("Kick failed, trying timeout instead...")
+        await safe_moderation_action(
+            "timeout", guild_id, user_id,
+            duration_minutes=60,
+            reason="Rule violation - timeout as fallback"
+        )
+
+async def validate_moderation_permissions():
+    """Check if bot has required permissions before attempting moderation."""
+    
+    guild_id = "123456789012345678"
+    
+    try:
+        # Try a harmless operation first to check permissions
+        guilds = await client.read_resource("guilds://")
+        guild = next((g for g in guilds if g["id"] == guild_id), None)
+        
+        if not guild:
+            print("❌ Bot is not in the specified guild")
+            return False
+        
+        # Check if we can access channels (basic permission check)
+        channels = await client.read_resource(f"channels://{guild_id}")
+        
+        if not channels:
+            print("❌ Bot cannot access channels in this guild")
+            return False
+        
+        print("✅ Basic permissions validated")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Permission validation failed: {e}")
+        return False
+
+# Example of permission-aware moderation
+async def smart_moderation():
+    """Perform moderation with permission awareness."""
+    
+    guild_id = "123456789012345678"
+    user_id = "987654321098765432"
+    
+    # Validate permissions first
+    if not await validate_moderation_permissions():
+        print("Cannot proceed with moderation - insufficient permissions")
+        return
+    
+    # Try moderation actions in order of severity
+    actions = [
+        ("timeout", {"duration_minutes": 10, "reason": "First warning"}),
+        ("kick", {"reason": "Continued violations"}),
+        ("ban", {"reason": "Severe violations", "delete_message_days": 1})
+    ]
+    
+    for action_type, params in actions:
+        success = await safe_moderation_action(action_type, guild_id, user_id, **params)
+        if success:
+            break
+        else:
+            print(f"Failed {action_type}, trying next action...")
+    else:
+        print("All moderation actions failed - manual intervention required")
+```
+
 ## Best Practices
 
 1. **Always handle exceptions** when making Discord API calls
@@ -494,6 +844,12 @@ async def rate_limited_operations():
 5. **Monitor bot activity** and resource usage
 6. **Test with small datasets** before scaling up operations
 7. **Keep sensitive information secure** (tokens, user data)
+8. **Validate role hierarchy** before moderation actions to avoid failures
+9. **Use escalating punishments** (timeout → kick → ban) for repeat offenders
+10. **Always provide clear reasons** for moderation actions for audit trails
+11. **Test moderation features** in a controlled environment before production
+12. **Implement fallback actions** when primary moderation fails due to permissions
+13. **Log all moderation actions** for accountability and review
 
 ## Performance Tips
 
