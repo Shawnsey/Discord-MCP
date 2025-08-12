@@ -192,4 +192,130 @@ def register_tools(server: FastMCP) -> None:
 
         return await discord_service.read_direct_messages(user_id, limit)
 
+    @server.tool(
+        name="timeout_user",
+        description="Timeout a user in a Discord server for a specified duration"
+    )
+    async def timeout_user(
+        guild_id: str, 
+        user_id: str, 
+        duration_minutes: int = 10, 
+        reason: Optional[str] = None
+    ) -> str:
+        """
+        Timeout a user in a Discord server for a specified duration.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to timeout
+            duration_minutes: Duration of timeout in minutes (default: 10, max: 40320 for 28 days)
+            reason: Optional reason for the timeout
+
+        Returns:
+            Success message with timeout details, or error message
+        """
+        # Parameter validation
+        if duration_minutes < 1:
+            return "❌ Error: Timeout duration must be at least 1 minute."
+        
+        if duration_minutes > 40320:  # 28 days * 24 hours * 60 minutes
+            return "❌ Error: Timeout duration cannot exceed 28 days (40320 minutes)."
+
+        # Get context from server
+        ctx = server.get_context()
+        lifespan_ctx = ctx.request_context.lifespan_context
+        discord_service: IDiscordService = lifespan_ctx["discord_service"]
+
+        return await discord_service.timeout_user(guild_id, user_id, duration_minutes, reason)
+
+    @server.tool(
+        name="untimeout_user",
+        description="Remove timeout from a user in a Discord server"
+    )
+    async def untimeout_user(
+        guild_id: str, 
+        user_id: str, 
+        reason: Optional[str] = None
+    ) -> str:
+        """
+        Remove timeout from a user in a Discord server.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to remove timeout from
+            reason: Optional reason for removing the timeout
+
+        Returns:
+            Success message with untimeout details, or error message
+        """
+        # Get context from server
+        ctx = server.get_context()
+        lifespan_ctx = ctx.request_context.lifespan_context
+        discord_service: IDiscordService = lifespan_ctx["discord_service"]
+
+        return await discord_service.untimeout_user(guild_id, user_id, reason)
+
+    @server.tool(
+        name="kick_user",
+        description="Kick a user from a Discord server"
+    )
+    async def kick_user(
+        guild_id: str, 
+        user_id: str, 
+        reason: Optional[str] = None
+    ) -> str:
+        """
+        Kick a user from a Discord server.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to kick
+            reason: Optional reason for the kick
+
+        Returns:
+            Success message with kick details, or error message
+        """
+        # Get context from server
+        ctx = server.get_context()
+        lifespan_ctx = ctx.request_context.lifespan_context
+        discord_service: IDiscordService = lifespan_ctx["discord_service"]
+
+        return await discord_service.kick_user(guild_id, user_id, reason)
+
+    @server.tool(
+        name="ban_user",
+        description="Ban a user from a Discord server with optional message deletion"
+    )
+    async def ban_user(
+        guild_id: str, 
+        user_id: str, 
+        reason: Optional[str] = None, 
+        delete_message_days: int = 0
+    ) -> str:
+        """
+        Ban a user from a Discord server with optional message deletion.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to ban
+            reason: Optional reason for the ban
+            delete_message_days: Number of days of messages to delete (0-7, default: 0)
+
+        Returns:
+            Success message with ban details, or error message
+        """
+        # Parameter validation for delete_message_days (0-7 range)
+        if delete_message_days < 0:
+            return "❌ Error: delete_message_days must be 0 or greater."
+        
+        if delete_message_days > 7:
+            return "❌ Error: delete_message_days cannot exceed 7 days (Discord API limit)."
+
+        # Get context from server
+        ctx = server.get_context()
+        lifespan_ctx = ctx.request_context.lifespan_context
+        discord_service: IDiscordService = lifespan_ctx["discord_service"]
+
+        return await discord_service.ban_user(guild_id, user_id, reason, delete_message_days)
+
     logger.info("Discord MCP tools registered successfully")

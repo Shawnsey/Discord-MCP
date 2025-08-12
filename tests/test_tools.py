@@ -355,6 +355,477 @@ class TestToolsIntegration:
         # Verify the result
         assert actual_result == expected_response
 
+
+class TestModerationToolsIntegration:
+    """Test moderation tools integration with DiscordService."""
+
+    @pytest.mark.asyncio
+    async def test_timeout_user_tool_integration(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test timeout_user tool integration with DiscordService."""
+        guild_id = "guild123"
+        user_id = "user123"
+        duration_minutes = 30
+        reason = "Disruptive behavior"
+        expected_response = "✅ User timed out successfully!"
+        mock_discord_service.timeout_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool through the server
+        result = await server_with_tools.call_tool(
+            "timeout_user",
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "duration_minutes": duration_minutes,
+                "reason": reason,
+            },
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.timeout_user.assert_called_once_with(
+            guild_id, user_id, duration_minutes, reason
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_timeout_user_tool_default_duration(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test timeout_user tool with default duration parameter."""
+        guild_id = "guild123"
+        user_id = "user123"
+        expected_response = "✅ User timed out successfully!"
+        mock_discord_service.timeout_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool without duration_minutes (should use default of 10)
+        result = await server_with_tools.call_tool(
+            "timeout_user", {"guild_id": guild_id, "user_id": user_id}
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with default duration
+        mock_discord_service.timeout_user.assert_called_once_with(
+            guild_id, user_id, 10, None
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_timeout_user_tool_parameter_validation_too_short(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test timeout_user tool parameter validation for duration too short."""
+        guild_id = "guild123"
+        user_id = "user123"
+        duration_minutes = 0  # Invalid: too short
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool with invalid duration
+        result = await server_with_tools.call_tool(
+            "timeout_user",
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "duration_minutes": duration_minutes,
+            },
+        )
+        actual_result = extract_result(result)
+
+        # Verify error message is returned
+        assert "❌ Error: Timeout duration must be at least 1 minute." in actual_result
+
+        # Verify the service was NOT called
+        mock_discord_service.timeout_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_timeout_user_tool_parameter_validation_too_long(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test timeout_user tool parameter validation for duration too long."""
+        guild_id = "guild123"
+        user_id = "user123"
+        duration_minutes = 50000  # Invalid: exceeds 28 days (40320 minutes)
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool with invalid duration
+        result = await server_with_tools.call_tool(
+            "timeout_user",
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "duration_minutes": duration_minutes,
+            },
+        )
+        actual_result = extract_result(result)
+
+        # Verify error message is returned
+        assert "❌ Error: Timeout duration cannot exceed 28 days (40320 minutes)." in actual_result
+
+        # Verify the service was NOT called
+        mock_discord_service.timeout_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_untimeout_user_tool_integration(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test untimeout_user tool integration with DiscordService."""
+        guild_id = "guild123"
+        user_id = "user123"
+        reason = "Timeout period served"
+        expected_response = "✅ User timeout removed successfully!"
+        mock_discord_service.untimeout_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool through the server
+        result = await server_with_tools.call_tool(
+            "untimeout_user",
+            {"guild_id": guild_id, "user_id": user_id, "reason": reason},
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.untimeout_user.assert_called_once_with(
+            guild_id, user_id, reason
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_untimeout_user_tool_without_reason(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test untimeout_user tool without reason parameter."""
+        guild_id = "guild123"
+        user_id = "user123"
+        expected_response = "✅ User timeout removed successfully!"
+        mock_discord_service.untimeout_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool without reason
+        result = await server_with_tools.call_tool(
+            "untimeout_user", {"guild_id": guild_id, "user_id": user_id}
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with None reason
+        mock_discord_service.untimeout_user.assert_called_once_with(
+            guild_id, user_id, None
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_kick_user_tool_integration(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test kick_user tool integration with DiscordService."""
+        guild_id = "guild123"
+        user_id = "user123"
+        reason = "Violation of server rules"
+        expected_response = "✅ User kicked successfully!"
+        mock_discord_service.kick_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool through the server
+        result = await server_with_tools.call_tool(
+            "kick_user", {"guild_id": guild_id, "user_id": user_id, "reason": reason}
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.kick_user.assert_called_once_with(
+            guild_id, user_id, reason
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_kick_user_tool_without_reason(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test kick_user tool without reason parameter."""
+        guild_id = "guild123"
+        user_id = "user123"
+        expected_response = "✅ User kicked successfully!"
+        mock_discord_service.kick_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool without reason
+        result = await server_with_tools.call_tool(
+            "kick_user", {"guild_id": guild_id, "user_id": user_id}
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with None reason
+        mock_discord_service.kick_user.assert_called_once_with(guild_id, user_id, None)
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_ban_user_tool_integration(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test ban_user tool integration with DiscordService."""
+        guild_id = "guild123"
+        user_id = "user123"
+        reason = "Repeated violations"
+        delete_message_days = 3
+        expected_response = "✅ User banned successfully!"
+        mock_discord_service.ban_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool through the server
+        result = await server_with_tools.call_tool(
+            "ban_user",
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "reason": reason,
+                "delete_message_days": delete_message_days,
+            },
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with correct parameters
+        mock_discord_service.ban_user.assert_called_once_with(
+            guild_id, user_id, reason, delete_message_days
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_ban_user_tool_default_parameters(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test ban_user tool with default parameters."""
+        guild_id = "guild123"
+        user_id = "user123"
+        expected_response = "✅ User banned successfully!"
+        mock_discord_service.ban_user.return_value = expected_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool with minimal parameters
+        result = await server_with_tools.call_tool(
+            "ban_user", {"guild_id": guild_id, "user_id": user_id}
+        )
+        actual_result = extract_result(result)
+
+        # Verify the service was called with default values
+        mock_discord_service.ban_user.assert_called_once_with(
+            guild_id, user_id, None, 0
+        )
+
+        # Verify the result
+        assert actual_result == expected_response
+
+    @pytest.mark.asyncio
+    async def test_ban_user_tool_parameter_validation_negative_days(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test ban_user tool parameter validation for negative delete_message_days."""
+        guild_id = "guild123"
+        user_id = "user123"
+        delete_message_days = -1  # Invalid: negative
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool with invalid delete_message_days
+        result = await server_with_tools.call_tool(
+            "ban_user",
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "delete_message_days": delete_message_days,
+            },
+        )
+        actual_result = extract_result(result)
+
+        # Verify error message is returned
+        assert "❌ Error: delete_message_days must be 0 or greater." in actual_result
+
+        # Verify the service was NOT called
+        mock_discord_service.ban_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_ban_user_tool_parameter_validation_too_many_days(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test ban_user tool parameter validation for delete_message_days too high."""
+        guild_id = "guild123"
+        user_id = "user123"
+        delete_message_days = 10  # Invalid: exceeds 7 days limit
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool with invalid delete_message_days
+        result = await server_with_tools.call_tool(
+            "ban_user",
+            {
+                "guild_id": guild_id,
+                "user_id": user_id,
+                "delete_message_days": delete_message_days,
+            },
+        )
+        actual_result = extract_result(result)
+
+        # Verify error message is returned
+        assert "❌ Error: delete_message_days cannot exceed 7 days (Discord API limit)." in actual_result
+
+        # Verify the service was NOT called
+        mock_discord_service.ban_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_moderation_tools_context_retrieval(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test that moderation tools properly retrieve context and delegate to service."""
+        # Setup mock responses for all moderation service methods
+        mock_discord_service.timeout_user.return_value = "Timeout response"
+        mock_discord_service.untimeout_user.return_value = "Untimeout response"
+        mock_discord_service.kick_user.return_value = "Kick response"
+        mock_discord_service.ban_user.return_value = "Ban response"
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Test each moderation tool calls the appropriate service method
+        await server_with_tools.call_tool(
+            "timeout_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.timeout_user.assert_called_once_with(
+            "guild123", "user123", 10, None
+        )
+
+        await server_with_tools.call_tool(
+            "untimeout_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.untimeout_user.assert_called_once_with(
+            "guild123", "user123", None
+        )
+
+        await server_with_tools.call_tool(
+            "kick_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.kick_user.assert_called_once_with(
+            "guild123", "user123", None
+        )
+
+        await server_with_tools.call_tool(
+            "ban_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.ban_user.assert_called_once_with(
+            "guild123", "user123", None, 0
+        )
+
+    @pytest.mark.asyncio
+    async def test_moderation_tools_error_handling(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test that moderation tools preserve error handling from service layer."""
+        error_response = "❌ Error: Bot does not have 'moderate_members' permission in this server."
+        mock_discord_service.timeout_user.return_value = error_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool
+        result = await server_with_tools.call_tool(
+            "timeout_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        actual_result = extract_result(result)
+
+        # Verify error response is returned
+        assert actual_result == error_response
+        assert "❌ Error:" in actual_result
+        assert "moderate_members" in actual_result
+
+    @pytest.mark.asyncio
+    async def test_moderation_tools_response_formatting(
+        self, server_with_tools, mock_discord_service
+    ):
+        """Test that moderation tools return properly formatted responses."""
+        success_response = "✅ User timed out successfully!\n- **User**: TestUser (123456789)\n- **Duration**: 10 minutes"
+        mock_discord_service.timeout_user.return_value = success_response
+
+        # Mock the server context
+        server_with_tools.get_context = MagicMock(
+            return_value=create_mock_context(mock_discord_service)
+        )
+
+        # Call the tool
+        result = await server_with_tools.call_tool(
+            "timeout_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        actual_result = extract_result(result)
+
+        # Verify response formatting is preserved
+        assert actual_result == success_response
+        assert "✅" in actual_result
+        assert "User timed out successfully!" in actual_result
+        assert "Duration" in actual_result
+
     @pytest.mark.asyncio
     async def test_all_tools_registered(self, server_with_tools):
         """Test that all expected tools are registered."""
@@ -371,6 +842,10 @@ class TestToolsIntegration:
             "read_direct_messages",
             "delete_message",
             "edit_message",
+            "timeout_user",
+            "untimeout_user",
+            "kick_user",
+            "ban_user",
         }
 
         # Verify all expected tools are registered
@@ -394,6 +869,10 @@ class TestToolsIntegration:
         mock_discord_service.read_direct_messages.return_value = "DM read response"
         mock_discord_service.delete_message.return_value = "Message deleted response"
         mock_discord_service.edit_message.return_value = "Message edited response"
+        mock_discord_service.timeout_user.return_value = "Timeout response"
+        mock_discord_service.untimeout_user.return_value = "Untimeout response"
+        mock_discord_service.kick_user.return_value = "Kick response"
+        mock_discord_service.ban_user.return_value = "Ban response"
 
         # Mock the server context
         server_with_tools.get_context = MagicMock(
@@ -451,6 +930,34 @@ class TestToolsIntegration:
         )
         mock_discord_service.edit_message.assert_called_once_with(
             "channel123", "msg123", "new content"
+        )
+
+        await server_with_tools.call_tool(
+            "timeout_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.timeout_user.assert_called_once_with(
+            "guild123", "user123", 10, None
+        )
+
+        await server_with_tools.call_tool(
+            "untimeout_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.untimeout_user.assert_called_once_with(
+            "guild123", "user123", None
+        )
+
+        await server_with_tools.call_tool(
+            "kick_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.kick_user.assert_called_once_with(
+            "guild123", "user123", None
+        )
+
+        await server_with_tools.call_tool(
+            "ban_user", {"guild_id": "guild123", "user_id": "user123"}
+        )
+        mock_discord_service.ban_user.assert_called_once_with(
+            "guild123", "user123", None, 0
         )
 
     @pytest.mark.asyncio

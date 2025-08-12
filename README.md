@@ -20,6 +20,7 @@ A comprehensive Model Context Protocol (MCP) server that enables AI assistants t
 - **Send Direct Message** (`send_dm`) - Send private messages to users (write)
 - **Read Direct Messages** (`read_direct_messages`) - Read DM conversations with specific users (read)
 - **Message Management** - Delete (`delete_message`) and edit (`edit_message`) messages with permissions (write)
+- **User Moderation** - Timeout (`timeout_user`), remove timeout (`untimeout_user`), kick (`kick_user`), and ban (`ban_user`) users with proper permission validation (moderation)
 - **Advanced Features** - Support for embeds, attachments, reactions, and rich formatting
 
 ## Quick Start
@@ -219,6 +220,9 @@ Required permissions for full functionality:
 - **Send Messages** - To send messages via MCP tools
 - **Read Message History** - To read messages via MCP resources
 - **Manage Messages** - To delete/edit messages (optional)
+- **Moderate Members** - To timeout and remove timeouts from users (moderation)
+- **Kick Members** - To kick users from servers (moderation)
+- **Ban Members** - To ban users from servers (moderation)
 - **Use Slash Commands** - For future slash command support (optional)
 
 ### 4. Invite Bot to Server
@@ -229,8 +233,15 @@ Required permissions for full functionality:
 
 ### 5. Get Bot Invite URL
 Replace `YOUR_CLIENT_ID` with your Discord Application ID:
+
+**Basic permissions (read/write operations):**
 ```
 https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=3072&scope=bot
+```
+
+**Full permissions (including moderation):**
+```
+https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=1099511627776&scope=bot
 ```
 
 ## Configuration
@@ -258,6 +269,34 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=30
 - **⚡ Rate Limiting**: Configured to respect Discord API limits automatically
 - **🔐 Permissions**: Bot only accesses channels it has permissions for
 - **📝 Audit Logging**: All actions are logged for security monitoring
+- **👮 Moderation Security**: Moderation actions respect Discord's role hierarchy - bot cannot moderate users with higher roles
+- **🛡️ Permission Validation**: All moderation tools validate required Discord permissions before executing actions
+- **⚠️ Moderation Limits**: Timeouts are limited to Discord's maximum of 28 days, bans can delete messages up to 7 days old
+
+### Role Hierarchy and Moderation Limitations
+
+Discord enforces a strict role hierarchy system that the bot must respect for all moderation actions:
+
+#### Role Hierarchy Rules
+- **Bot Role Position**: The bot's highest role must be positioned higher than the target user's highest role
+- **Permission Requirements**: The bot must have the specific permission for each moderation action:
+  - `moderate_members` for timeout/untimeout operations
+  - `kick_members` for kick operations  
+  - `ban_members` for ban operations
+- **Owner Immunity**: Server owners cannot be moderated by bots regardless of role hierarchy
+- **Bot Limitations**: Bots cannot moderate other bots with equal or higher role positions
+
+#### Moderation Constraints
+- **Timeout Duration**: 1 minute minimum, 28 days maximum (Discord API limit)
+- **Ban Message Deletion**: 0-7 days of message history can be deleted when banning
+- **Audit Log Integration**: All moderation actions are automatically logged to Discord's audit log
+- **Error Handling**: Clear error messages explain hierarchy violations and permission issues
+
+#### Best Practices
+- Position the bot's role appropriately in your server's role hierarchy
+- Grant only necessary permissions to minimize security risks
+- Use descriptive reasons for all moderation actions for audit trail clarity
+- Test moderation commands in a controlled environment before production use
 
 ## API Reference
 
@@ -273,17 +312,21 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=30
 
 ### Tools
 
-| Tool | Parameters | Description |
-|------|------------|-------------|
-| `list_guilds` | - | List all accessible Discord servers |
-| `list_channels` | `guild_id` | List channels in a specific server |
-| `get_messages` | `channel_id` | Get recent messages from a channel |
-| `get_user_info` | `user_id` | Get user profile information |
-| `send_message` | `channel_id`, `content`, `reply_to_message_id?` | Send message to channel |
-| `send_dm` | `user_id`, `content` | Send direct message to user |
-| `read_direct_messages` | `user_id`, `limit?` | Read DM conversation |
-| `delete_message` | `channel_id`, `message_id` | Delete a message |
-| `edit_message` | `channel_id`, `message_id`, `new_content` | Edit a message |
+| Tool | Parameters | Description | Required Permissions |
+|------|------------|-------------|---------------------|
+| `list_guilds` | - | List all accessible Discord servers | View Channels |
+| `list_channels` | `guild_id` | List channels in a specific server | View Channels |
+| `get_messages` | `channel_id` | Get recent messages from a channel | Read Message History |
+| `get_user_info` | `user_id` | Get user profile information | - |
+| `send_message` | `channel_id`, `content`, `reply_to_message_id?` | Send message to channel | Send Messages |
+| `send_dm` | `user_id`, `content` | Send direct message to user | - |
+| `read_direct_messages` | `user_id`, `limit?` | Read DM conversation | - |
+| `delete_message` | `channel_id`, `message_id` | Delete a message | Manage Messages |
+| `edit_message` | `channel_id`, `message_id`, `new_content` | Edit a message | Manage Messages |
+| `timeout_user` | `guild_id`, `user_id`, `duration_minutes?`, `reason?` | Timeout a user (default: 10 minutes) | Moderate Members |
+| `untimeout_user` | `guild_id`, `user_id`, `reason?` | Remove timeout from a user | Moderate Members |
+| `kick_user` | `guild_id`, `user_id`, `reason?` | Kick a user from the server | Kick Members |
+| `ban_user` | `guild_id`, `user_id`, `reason?`, `delete_message_days?` | Ban a user from the server | Ban Members |
 
 ## Usage Examples
 
@@ -364,6 +407,53 @@ result = await client.call_tool("edit_message", {
     "channel_id": "123456789012345678",
     "message_id": "222222222222222222",
     "new_content": "Updated message content"
+})
+```
+
+### User Moderation
+```python
+# Timeout a user for 30 minutes
+result = await client.call_tool("timeout_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "987654321098765432",
+    "duration_minutes": 30,
+    "reason": "Disruptive behavior in chat"
+})
+
+# Timeout a user with default duration (10 minutes)
+result = await client.call_tool("timeout_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "987654321098765432",
+    "reason": "Spam messages"
+})
+
+# Remove timeout from a user
+result = await client.call_tool("untimeout_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "987654321098765432",
+    "reason": "Timeout period served"
+})
+
+# Kick a user from the server
+result = await client.call_tool("kick_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "987654321098765432",
+    "reason": "Violation of server rules"
+})
+
+# Ban a user from the server
+result = await client.call_tool("ban_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "987654321098765432",
+    "reason": "Repeated rule violations",
+    "delete_message_days": 1  # Delete messages from last 1 day
+})
+
+# Ban a user without deleting messages
+result = await client.call_tool("ban_user", {
+    "guild_id": "123456789012345678",
+    "user_id": "987654321098765432",
+    "reason": "Serious rule violation"
 })
 ```
 
@@ -523,6 +613,7 @@ With the service layer architecture, adding new Discord features is streamlined:
 - **Consistent Error Handling**: Automatic error management and logging
 - **Easy Testing**: Mock the service interface for isolated testing
 - **Type Safety**: Interface contracts ensure proper implementation
+- **Moderation Support**: Centralized permission validation and role hierarchy checking for all moderation operations
 
 ## Troubleshooting
 
@@ -543,6 +634,15 @@ With the service layer architecture, adding new Discord features is streamlined:
 - Verify bot has required permissions for the action
 - Re-invite bot with correct permissions
 - Check channel-specific permission overrides
+
+#### 5. Moderation Issues
+**Symptoms**: "Role hierarchy violation", "Cannot moderate this user"
+**Solutions**:
+- Ensure bot's role is positioned higher than target user's highest role
+- Verify bot has required moderation permissions (moderate_members, kick_members, ban_members)
+- Check that target user is not the server owner
+- Confirm timeout duration is within 1 minute to 28 days range
+- Verify ban message deletion days is within 0-7 range
 
 #### 3. MCP Integration Issues
 **Symptoms**: "Still loading", connection timeouts
@@ -646,7 +746,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### v0.2.0 (Latest)
+### v0.3.0 (Latest)
+- ✅ Added comprehensive user moderation tools (`timeout_user`, `untimeout_user`, `kick_user`, `ban_user`)
+- ✅ Implemented role hierarchy validation for all moderation actions
+- ✅ Added permission validation for moderation operations
+- ✅ Enhanced service layer architecture for better code organization
+- ✅ Added comprehensive moderation documentation and examples
+- ✅ Integrated audit logging for all moderation actions
+
+### v0.2.0
 - ✅ Added `read_direct_messages` tool for bidirectional DM support
 - ✅ Implemented dual transport support (stdio + SSE)
 - ✅ Added comprehensive command line interface

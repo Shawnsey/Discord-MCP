@@ -167,6 +167,7 @@ class DiscordClient:
         endpoint: str,
         data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
         max_retries: int = 3,
     ) -> Dict[str, Any]:
         """Make an HTTP request with rate limiting and retries."""
@@ -186,6 +187,8 @@ class DiscordClient:
                 kwargs = {"params": params} if params else {}
                 if data is not None:
                     kwargs["json"] = data
+                if headers:
+                    kwargs["headers"] = headers
 
                 logger.debug(
                     "Making Discord API request",
@@ -226,32 +229,32 @@ class DiscordClient:
         raise DiscordAPIError("Unexpected error in request retry loop")
 
     async def get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Make a GET request."""
-        return await self._request("GET", endpoint, params=params)
+        return await self._request("GET", endpoint, params=params, headers=headers)
 
     async def post(
-        self, endpoint: str, data: Optional[Dict[str, Any]] = None
+        self, endpoint: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Make a POST request."""
-        return await self._request("POST", endpoint, data=data)
+        return await self._request("POST", endpoint, data=data, headers=headers)
 
     async def put(
-        self, endpoint: str, data: Optional[Dict[str, Any]] = None
+        self, endpoint: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Make a PUT request."""
-        return await self._request("PUT", endpoint, data=data)
+        return await self._request("PUT", endpoint, data=data, headers=headers)
 
     async def patch(
-        self, endpoint: str, data: Optional[Dict[str, Any]] = None
+        self, endpoint: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Make a PATCH request."""
-        return await self._request("PATCH", endpoint, data=data)
+        return await self._request("PATCH", endpoint, data=data, headers=headers)
 
-    async def delete(self, endpoint: str) -> Dict[str, Any]:
+    async def delete(self, endpoint: str, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """Make a DELETE request."""
-        return await self._request("DELETE", endpoint)
+        return await self._request("DELETE", endpoint, headers=headers)
 
     # Discord API specific methods
 
@@ -343,3 +346,59 @@ class DiscordClient:
 
         # Send message to DM channel
         return await self.send_message(channel_id, content=content)
+
+    # Moderation API methods
+
+    async def get_guild_member(self, guild_id: str, user_id: str) -> Dict[str, Any]:
+        """Get guild member information."""
+        return await self.get(f"/guilds/{guild_id}/members/{user_id}")
+
+    async def edit_guild_member(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None, **kwargs
+    ) -> Dict[str, Any]:
+        """Edit a guild member (used for timeouts and other member modifications)."""
+        data = {}
+        
+        # Add any additional fields from kwargs
+        for key, value in kwargs.items():
+            if value is not None:
+                data[key] = value
+        
+        # Add audit log reason if provided
+        headers = {}
+        if reason:
+            headers["X-Audit-Log-Reason"] = reason
+        
+        return await self.patch(f"/guilds/{guild_id}/members/{user_id}", data=data, headers=headers)
+
+    async def kick_guild_member(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None
+    ) -> None:
+        """Kick a member from a guild."""
+        # Add audit log reason if provided
+        headers = {}
+        if reason:
+            headers["X-Audit-Log-Reason"] = reason
+        
+        await self.delete(f"/guilds/{guild_id}/members/{user_id}", headers=headers)
+
+    async def ban_guild_member(
+        self, 
+        guild_id: str, 
+        user_id: str, 
+        reason: Optional[str] = None, 
+        delete_message_days: int = 0
+    ) -> None:
+        """Ban a member from a guild with optional message deletion."""
+        data = {}
+        
+        # Add delete_message_days if specified (0-7 days allowed by Discord)
+        if delete_message_days > 0:
+            data["delete_message_days"] = min(max(delete_message_days, 0), 7)
+        
+        # Add audit log reason if provided
+        headers = {}
+        if reason:
+            headers["X-Audit-Log-Reason"] = reason
+        
+        await self.put(f"/guilds/{guild_id}/bans/{user_id}", data=data, headers=headers)

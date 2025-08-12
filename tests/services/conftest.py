@@ -138,3 +138,64 @@ def sample_user_data():
         "accent_color": None,
         "public_flags": 0,
     }
+
+
+@pytest.fixture
+def sample_guild_member_data():
+    """Sample guild member data for testing."""
+    return {
+        "user": {
+            "id": "123456789012345678",
+            "username": "testuser",
+            "global_name": "Test User"
+        },
+        "roles": ["role1", "role2"],
+        "communication_disabled_until": None,
+        "joined_at": "2023-01-01T00:00:00Z"
+    }
+
+
+@pytest.fixture
+def sample_guild_roles_data():
+    """Sample guild roles data for testing."""
+    return [
+        {
+            "id": "role1",
+            "name": "Bot Role",
+            "position": 5,
+            "permissions": "8",
+            "color": 0,
+            "hoist": False,
+            "managed": True
+        },
+        {
+            "id": "role2", 
+            "name": "User Role",
+            "position": 3,
+            "permissions": "104324161",
+            "color": 16711680,
+            "hoist": False,
+            "managed": False
+        },
+        {
+            "id": "role3",
+            "name": "Admin Role", 
+            "position": 10,
+            "permissions": "8",
+            "color": 255,
+            "hoist": True,
+            "managed": False
+        }
+    ]
+
+
+@pytest.fixture
+def sample_bot_user_data():
+    """Sample bot user data for testing."""
+    return {
+        "id": "bot_user_id_123",
+        "username": "testbot",
+        "discriminator": "0000",
+        "bot": True,
+        "avatar": "bot_avatar_hash"
+    }

@@ -142,3 +142,73 @@ class IDiscordService(ABC):
             str: Success message or error message
         """
         pass
+
+    @abstractmethod
+    async def timeout_user(
+        self, guild_id: str, user_id: str, duration_minutes: int, reason: Optional[str] = None
+    ) -> str:
+        """
+        Timeout a user in a Discord server for a specified duration.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to timeout
+            duration_minutes: Duration of timeout in minutes (1-40320, max 28 days)
+            reason: Optional reason for the timeout
+
+        Returns:
+            str: Success message with timeout details or error message
+        """
+        pass
+
+    @abstractmethod
+    async def untimeout_user(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None
+    ) -> str:
+        """
+        Remove timeout from a user in a Discord server.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to remove timeout from
+            reason: Optional reason for removing the timeout
+
+        Returns:
+            str: Success message or error message
+        """
+        pass
+
+    @abstractmethod
+    async def kick_user(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None
+    ) -> str:
+        """
+        Kick a user from a Discord server.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to kick
+            reason: Optional reason for the kick
+
+        Returns:
+            str: Success message or error message
+        """
+        pass
+
+    @abstractmethod
+    async def ban_user(
+        self, guild_id: str, user_id: str, reason: Optional[str] = None, delete_message_days: int = 0
+    ) -> str:
+        """
+        Ban a user from a Discord server with optional message deletion.
+
+        Args:
+            guild_id: The Discord guild (server) ID
+            user_id: The Discord user ID to ban
+            reason: Optional reason for the ban
+            delete_message_days: Number of days of messages to delete (0-7, default: 0)
+
+        Returns:
+            str: Success message or error message
+        """
+        pass
