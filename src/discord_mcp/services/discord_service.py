@@ -14,6 +14,7 @@ import structlog
 
 from ..config import Settings
 from ..discord_client import DiscordAPIError, DiscordClient
+from .content_formatter import ContentFormatter
 from .interfaces import IDiscordService
 from .validation import ValidationMixin
 
@@ -52,15 +53,6 @@ class DiscordService(IDiscordService, ValidationMixin):
     - _create_not_found_response(): Consistent not found error formatting
     - _create_validation_error_response(): Consistent validation error formatting
     
-    Content Formatting Methods:
-    - _format_guild_info(): Centralized guild information formatting
-    - _format_channel_info(): Centralized channel information formatting
-    - _format_message_info(): Centralized message information formatting
-    - _format_user_info(): Centralized user information formatting
-    - _format_user_display_name(): Consistent user display name formatting
-    - _format_timestamp(): Consistent timestamp formatting
-    - _truncate_content(): Content truncation utility
-    
     Logging Utilities:
     - _log_operation_start(): Consistent operation start logging
     - _log_operation_success(): Consistent success logging
@@ -85,6 +77,7 @@ class DiscordService(IDiscordService, ValidationMixin):
         discord_client: DiscordClient,
         settings: Settings,
         logger: structlog.stdlib.BoundLogger,
+        content_formatter: Optional[ContentFormatter] = None,
     ) -> None:
         """
         Initialize the Discord service with required dependencies.
@@ -93,10 +86,13 @@ class DiscordService(IDiscordService, ValidationMixin):
             discord_client: The Discord API client for making requests
             settings: Application settings including permissions and configuration
             logger: Structured logger for consistent logging across operations
+            content_formatter: Optional ContentFormatter instance for formatting operations.
+                             If not provided, a new instance will be created with settings.
         """
         self._discord_client = discord_client
         self._settings = settings
         self._logger = logger
+        self._content_formatter = content_formatter or ContentFormatter(settings)
 
     async def get_guilds_formatted(self) -> str:
         """
@@ -125,7 +121,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return "# Discord Guilds\n\nNo guilds found or bot has no access to any guilds."
 
             # Use centralized formatting method
-            result = await self._format_guild_info(guilds)
+            result = self._content_formatter.format_guild_info(guilds)
             
             self._log_operation_success(
                 "guild list retrieval", 
@@ -186,7 +182,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"# Channels in {guild_name}\n\nNo accessible channels found in this guild."
 
             # Use centralized formatting method
-            result = self._format_channel_info(channels, guild_name)
+            result = self._content_formatter.format_channel_info(channels, guild_name)
             
             self._log_operation_success(
                 "channel list retrieval",
@@ -242,7 +238,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"# Messages in #{channel_name}\n\nNo messages found in this channel."
 
             # Use centralized message formatting method
-            result = self._format_message_info(messages, channel_name)
+            result = self._content_formatter.format_message_info(messages, channel_name)
             
             self._log_operation_success(
                 "message retrieval",
@@ -278,7 +274,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 raise
 
             # Use centralized user info formatting method
-            result = self._format_user_info(user, user_id)
+            result = self._content_formatter.format_user_info(user, user_id)
             
             self._log_operation_success("user info retrieval", user_id=user_id)
             return result
@@ -357,7 +353,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 success_msg = f"✅ Message sent successfully to #{channel_name}!"
                 success_msg += f"\n- **Message ID**: `{message_id}`"
                 success_msg += f"\n- **Channel**: #{channel_name} (`{channel_id}`)"
-                success_msg += f"\n- **Content**: {self._truncate_content(content, 100)}"
+                success_msg += f"\n- **Content**: {self._content_formatter.truncate_content(content, 100)}"
                 if reply_to_message_id:
                     success_msg += f"\n- **Reply to**: `{reply_to_message_id}`"
                 if timestamp:
@@ -405,7 +401,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"❌ Error: User `{user_id}` not found."
 
             # Use centralized user display name formatting
-            username = self._format_user_display_name(user)
+            username = self._content_formatter.format_user_display_name(user)
 
             # Check if user is a bot (some bots don't accept DMs)
             if (
@@ -429,9 +425,9 @@ class DiscordService(IDiscordService, ValidationMixin):
                 success_msg = f"✅ Direct message sent successfully to {user.get('username', 'Unknown User')}!"
                 success_msg += f"\n- **Message ID**: `{message_id}`"
                 success_msg += f"\n- **Recipient**: {user.get('username', 'Unknown User')} (`{user_id}`)"
-                success_msg += f"\n- **Content**: {self._truncate_content(content, 100)}"
+                success_msg += f"\n- **Content**: {self._content_formatter.truncate_content(content, 100)}"
                 if timestamp:
-                    success_msg += f"\n- **Sent at**: {self._format_timestamp(timestamp)}"
+                    success_msg += f"\n- **Sent at**: {self._content_formatter.format_timestamp(timestamp)}"
 
                 self._log_operation_success(
                     "direct message sending",
@@ -473,7 +469,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"❌ Error: User `{user_id}` not found."
 
             # Use centralized user display name formatting
-            display_name = self._format_user_display_name(user_info)
+            display_name = self._content_formatter.format_user_display_name(user_info)
 
             # Create or get existing DM channel
             try:
@@ -502,7 +498,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 try:
                     bot_user = await self._discord_client.get_current_user()
                     bot_user_id = bot_user["id"]
-                    bot_username = self._format_user_display_name(bot_user)
+                    bot_username = self._content_formatter.format_user_display_name(bot_user)
                 except:
                     bot_user_id = None
                     bot_username = "Bot"
@@ -511,7 +507,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                     author = message.get("author", {})
                     author_id = author.get("id", "Unknown")
                     content = message.get("content", "(no text content)")
-                    timestamp = self._format_timestamp(message.get("timestamp", ""))
+                    timestamp = self._content_formatter.format_timestamp(message.get("timestamp", ""))
                     message_id = message.get("id", "Unknown")
 
                     # Determine if it's from bot or user using centralized formatting
@@ -520,7 +516,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                     elif author_id == user_id:
                         sender_label = f"👤 {display_name}"
                     else:
-                        author_display = self._format_user_display_name(author)
+                        author_display = self._content_formatter.format_user_display_name(author)
                         sender_label = f"❓ {author_display}"
 
                     result += f"**{i:2d}.** [{timestamp}] {sender_label}\n"
@@ -528,7 +524,7 @@ class DiscordService(IDiscordService, ValidationMixin):
 
                     # Handle different content types using centralized truncation
                     if content and content.strip():
-                        formatted_content = self._truncate_content(content, 500)
+                        formatted_content = self._content_formatter.truncate_content(content, 500)
                         result += f"     💬 {formatted_content}\n"
                     else:
                         result += f"     💬 (no text content)\n"
@@ -613,7 +609,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                     channel_id, message_id
                 )
                 message_author = message.get("author", {}).get("username", "Unknown")
-                message_content = self._truncate_content(message.get("content", ""), 50)
+                message_content = self._content_formatter.truncate_content(message.get("content", ""), 50)
 
             except DiscordAPIError as e:
                 if e.status_code == 404:
@@ -730,8 +726,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 success_msg = f"✅ Message edited successfully in #{channel_name}!"
                 success_msg += f"\n- **Message ID**: `{message_id}`"
                 success_msg += f"\n- **Channel**: #{channel_name} (`{channel_id}`)"
-                success_msg += f"\n- **Old Content**: {self._truncate_content(old_content, 50)}"
-                success_msg += f"\n- **New Content**: {self._truncate_content(new_content, 50)}"
+                success_msg += f"\n- **Old Content**: {self._content_formatter.truncate_content(old_content, 50)}"
+                success_msg += f"\n- **New Content**: {self._content_formatter.truncate_content(new_content, 50)}"
 
                 self._log_operation_success(
                     "message editing",
@@ -1549,7 +1545,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 # Handle different value types
                 if isinstance(value, str) and len(value) > 100:
                     # Truncate long strings
-                    formatted_value = self._truncate_content(value, 100)
+                    formatted_value = self._content_formatter.truncate_content(value, 100)
                 elif isinstance(value, str) and (key.endswith('_id') or key == 'id'):
                     # Format IDs with backticks
                     formatted_value = f"`{value}`"
@@ -1560,71 +1556,9 @@ class DiscordService(IDiscordService, ValidationMixin):
         
         return "\n".join(message_parts)
 
-    def _format_user_display_name(self, user: dict) -> str:
-        """
-        Format a consistent user display name from user data.
-        
-        Args:
-            user: Discord user object containing user information
-            
-        Returns:
-            str: Formatted display name following Discord's naming conventions
-        """
-        username = user.get("username", "Unknown User")
-        global_name = user.get("global_name")
-        discriminator = user.get("discriminator", "0")
-        
-        # Handle new Discord username system (no discriminator) vs legacy system
-        if discriminator == "0" or discriminator == "0000":
-            # New system: use global_name if available, otherwise username
-            if global_name and global_name != username:
-                return f"{global_name} (@{username})"
-            else:
-                return f"@{username}"
-        else:
-            # Legacy system: use username#discriminator format
-            if global_name and global_name != username:
-                return f"{global_name} ({username}#{discriminator})"
-            else:
-                return f"{username}#{discriminator}"
 
-    def _format_timestamp(self, timestamp: str) -> str:
-        """
-        Format a Discord timestamp string into a consistent, readable format.
-        
-        Args:
-            timestamp: ISO timestamp string from Discord API
-            
-        Returns:
-            str: Formatted timestamp string in a consistent format
-        """
-        if not timestamp:
-            return "Unknown time"
-            
-        try:
-            from datetime import datetime
-            
-            # Handle various timestamp formats
-            if timestamp.endswith('Z'):
-                # ISO format with Z suffix
-                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-            elif '+' in timestamp or timestamp.endswith('UTC'):
-                # Already has timezone info
-                dt = datetime.fromisoformat(timestamp.replace('UTC', '').strip())
-            else:
-                # Assume UTC if no timezone info
-                dt = datetime.fromisoformat(timestamp)
-            
-            # Format as consistent string
-            return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-        except (ValueError, AttributeError) as e:
-            # Log warning and return original timestamp if parsing fails
-            self._logger.warning(
-                "Failed to parse timestamp",
-                timestamp=timestamp,
-                error=str(e)
-            )
-            return timestamp
+
+
 
     # Centralized moderation action framework methods
     # These methods eliminate duplicate moderation patterns across timeout, kick, and ban operations
@@ -1799,7 +1733,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                 
                 # Handle different value types
                 if isinstance(value, str) and len(value) > 100:
-                    formatted_value = self._truncate_content(value, 100)
+                    formatted_value = self._content_formatter.truncate_content(value, 100)
                 else:
                     formatted_value = str(value)
                     
@@ -1838,31 +1772,7 @@ class DiscordService(IDiscordService, ValidationMixin):
         """
         return f"❌ Error: Bot does not have permission to {action} users in {guild_name}. Role hierarchy may prevent this action."
 
-    def _truncate_content(self, content: str, max_length: int = 100) -> str:
-        """
-        Truncate content to a specified maximum length with ellipsis.
-        
-        Args:
-            content: The content string to truncate
-            max_length: Maximum length before truncation (default: 100)
-            
-        Returns:
-            str: Truncated content with ellipsis if needed
-        """
-        if not content:
-            return ""
-            
-        content = str(content).strip()
-        
-        if len(content) <= max_length:
-            return content
-            
-        # Handle edge case where max_length is too small for ellipsis
-        if max_length <= 3:
-            return "..."
-            
-        # Truncate and add ellipsis
-        return content[:max_length - 3] + "..."
+
 
     # Centralized logging utilities
     def _log_operation_start(self, operation: str, **kwargs) -> None:
@@ -1911,228 +1821,3 @@ class DiscordService(IDiscordService, ValidationMixin):
             success=False,
             **kwargs
         )
-
-    # Content formatting methods for resources
-    # These methods centralize formatting logic to ensure consistent output across all operations
-    async def _format_guild_info(self, guilds: list) -> str:
-        """
-        Format guild information into a consistent markdown structure.
-        
-        This method centralizes guild formatting logic to ensure consistent
-        output across all operations that display guild information.
-        
-        Args:
-            guilds: List of guild dictionaries from Discord API
-            
-        Returns:
-            str: Formatted markdown string containing guild information
-        """
-        if not guilds:
-            return "# Discord Guilds\n\nNo guilds found or bot has no access to any guilds."
-        
-        guild_info = ["# Discord Guilds", f"Found {len(guilds)} guild(s):\n"]
-        
-        for i, guild in enumerate(guilds, 1):
-            guild_id = guild.get("id", "Unknown")
-            guild_name = guild.get("name", "Unknown Guild")
-            member_count = guild.get("approximate_member_count", "Unknown")
-            owner = guild.get("owner", False)
-            permissions = guild.get("permissions", "0")
-            
-            guild_info.append(f"## {i}. {guild_name}")
-            guild_info.append(f"- **Guild ID**: `{guild_id}`")
-            guild_info.append(f"- **Members**: {member_count}")
-            guild_info.append(f"- **Bot is Owner**: {'Yes' if owner else 'No'}")
-            guild_info.append(f"- **Permissions**: `{permissions}`")
-            
-            # Add features if available
-            features = guild.get("features", [])
-            if features:
-                guild_info.append(f"- **Features**: {', '.join(features[:5])}")
-                if len(features) > 5:
-                    guild_info.append(f"  (and {len(features) - 5} more)")
-            
-            guild_info.append("")  # Empty line between guilds
-        
-        return "\n".join(guild_info)
-
-    def _format_channel_info(self, channels: list, guild_name: str) -> str:
-        """
-        Format channel information into a consistent markdown structure.
-        
-        This method centralizes channel formatting logic to ensure consistent
-        output across all operations that display channel information.
-        
-        Args:
-            channels: List of channel dictionaries from Discord API
-            guild_name: Name of the guild containing these channels
-            
-        Returns:
-            str: Formatted markdown string containing channel information
-        """
-        if not channels:
-            return f"# Channels in {guild_name}\n\nNo accessible channels found in this guild."
-        
-        # Group channels by type
-        channel_types = {}
-        for channel in channels:
-            channel_type = channel.get("type", 0)
-            type_name = {
-                0: "Text Channels",
-                2: "Voice Channels", 
-                4: "Categories",
-                5: "Announcement Channels",
-                13: "Stage Channels",
-                15: "Forum Channels"
-            }.get(channel_type, "Other Channels")
-            
-            if type_name not in channel_types:
-                channel_types[type_name] = []
-            channel_types[type_name].append(channel)
-        
-        channel_info = [f"# Channels in {guild_name}", f"Found {len(channels)} channel(s):\n"]
-        
-        # Display channels grouped by type
-        for type_name, type_channels in channel_types.items():
-            channel_info.append(f"## {type_name}")
-            
-            for channel in type_channels:
-                channel_id = channel.get("id", "Unknown")
-                channel_name = channel.get("name", "Unknown Channel")
-                topic = channel.get("topic", "")
-                nsfw = channel.get("nsfw", False)
-                
-                channel_info.append(f"- **#{channel_name}** (`{channel_id}`)")
-                if topic:
-                    truncated_topic = self._truncate_content(topic, 100)
-                    channel_info.append(f"  - Topic: {truncated_topic}")
-                if nsfw:
-                    channel_info.append(f"  - 🔞 NSFW Channel")
-            
-            channel_info.append("")  # Empty line between types
-        
-        return "\n".join(channel_info)
-
-    def _format_message_info(self, messages: list, channel_name: str) -> str:
-        """
-        Format message information into a consistent markdown structure.
-        
-        This method centralizes message formatting logic to ensure consistent
-        output across all operations that display message information.
-        
-        Args:
-            messages: List of message dictionaries from Discord API
-            channel_name: Name of the channel containing these messages
-            
-        Returns:
-            str: Formatted markdown string containing message information
-        """
-        if not messages:
-            return f"# Messages in #{channel_name}\n\nNo messages found in this channel."
-        
-        message_info = [
-            f"# Messages in #{channel_name}",
-            f"Retrieved {len(messages)} message(s):\n",
-            "=" * 60 + "\n"
-        ]
-        
-        for i, message in enumerate(messages, 1):
-            author = message.get("author", {})
-            author_name = self._format_user_display_name(author)
-            content = message.get("content", "(no text content)")
-            timestamp = self._format_timestamp(message.get("timestamp", ""))
-            message_id = message.get("id", "Unknown")
-            
-            message_info.append(f"**{i:2d}.** [{timestamp}] {author_name}")
-            message_info.append(f"     Message ID: `{message_id}`")
-            
-            # Handle message content
-            if content and content.strip():
-                formatted_content = self._truncate_content(content, 500)
-                message_info.append(f"     💬 {formatted_content}")
-            else:
-                message_info.append(f"     💬 (no text content)")
-            
-            # Check for embeds
-            embeds = message.get("embeds", [])
-            if embeds:
-                message_info.append(f"     📎 {len(embeds)} embed(s)")
-            
-            # Check for attachments
-            attachments = message.get("attachments", [])
-            if attachments:
-                message_info.append(f"     📁 {len(attachments)} attachment(s)")
-            
-            # Check for reactions
-            reactions = message.get("reactions", [])
-            if reactions:
-                message_info.append(f"     ⭐ {len(reactions)} reaction(s)")
-            
-            message_info.append("")  # Empty line between messages
-        
-        return "\n".join(message_info)
-
-    def _format_user_info(self, user: dict, user_id: str = None) -> str:
-        """
-        Format user information into a consistent markdown structure.
-        
-        This method centralizes user info formatting logic to ensure consistent
-        output across all operations that display user information.
-        
-        Args:
-            user: User dictionary from Discord API
-            user_id: Optional user ID if not available in user dict
-            
-        Returns:
-            str: Formatted markdown string containing user information
-        """
-        user_id = user.get("id", user_id or "Unknown")
-        username = user.get("username", "Unknown User")
-        discriminator = user.get("discriminator", "0000")
-        display_name = self._format_user_display_name(user)
-        
-        user_info = [
-            f"# User Information: {display_name}",
-            f"- **User ID**: `{user_id}`",
-            f"- **Username**: {username}",
-        ]
-        
-        # Add discriminator if not the new format
-        if discriminator != "0":
-            user_info.append(f"- **Discriminator**: #{discriminator}")
-        
-        # Add global display name if available
-        global_name = user.get("global_name")
-        if global_name and global_name != username:
-            user_info.append(f"- **Display Name**: {global_name}")
-        
-        # Add bot status
-        is_bot = user.get("bot", False)
-        user_info.append(f"- **Bot Account**: {'Yes' if is_bot else 'No'}")
-        
-        # Add system status
-        is_system = user.get("system", False)
-        if is_system:
-            user_info.append(f"- **System Account**: Yes")
-        
-        # Add verification status
-        verified = user.get("verified")
-        if verified is not None:
-            user_info.append(f"- **Verified**: {'Yes' if verified else 'No'}")
-        
-        # Add avatar information
-        avatar = user.get("avatar")
-        if avatar:
-            user_info.append(f"- **Has Avatar**: Yes")
-        
-        # Add account creation date if we can calculate it
-        try:
-            # Discord snowflake epoch (January 1, 2015)
-            discord_epoch = 1420070400000
-            timestamp = ((int(user_id) >> 22) + discord_epoch) / 1000
-            created_date = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-            user_info.append(f"- **Account Created**: {created_date.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        except (ValueError, TypeError):
-            pass  # Skip if we can't calculate the date
-        
-        return "\n".join(user_info)
