@@ -10,10 +10,10 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import structlog
 
-from discord_mcp.config import Settings
-from discord_mcp.discord_client import DiscordAPIError, DiscordClient
-from discord_mcp.services.discord_service import DiscordService
-from discord_mcp.services.interfaces import IDiscordService
+from src.discord_mcp.config import Settings
+from src.discord_mcp.discord_client import DiscordAPIError, DiscordClient
+from src.discord_mcp.services.discord_service import DiscordService
+from src.discord_mcp.services.interfaces import IDiscordService
 
 
 class TestDiscordService:
@@ -53,15 +53,15 @@ class TestDiscordService:
 
     # Test error handling methods
 
-    def test_handle_discord_error(self, discord_service, mock_logger):
-        """Test centralized Discord API error handling."""
+    def test_handle_discord_error_basic(self, discord_service, mock_logger):
+        """Test centralized Discord API error handling without resource info."""
         error = DiscordAPIError("Test error", 500)
         operation = "testing operation"
 
         result = discord_service._handle_discord_error(error, operation)
 
         # Check error message format
-        assert result.startswith("# Error\n\n")
+        assert result.startswith("❌ Error:")
         assert "Discord API error while testing operation: Test error" in result
 
         # Check logging was called
@@ -69,15 +69,65 @@ class TestDiscordService:
         call_args = mock_logger.error.call_args
         assert "Discord API error in testing operation" in call_args[0]
 
-    def test_handle_unexpected_error(self, discord_service, mock_logger):
-        """Test centralized unexpected error handling."""
+    def test_handle_discord_error_with_resource_info(self, discord_service, mock_logger):
+        """Test centralized Discord API error handling with resource info."""
+        error = DiscordAPIError("Not found", 404)
+        operation = "testing operation"
+        resource_type = "Guild"
+        resource_id = "123456789012345678"
+
+        result = discord_service._handle_discord_error(error, operation, resource_type, resource_id)
+
+        # Check that it uses the centralized not found response
+        assert "# Guild Not Found" in result
+        assert f"Guild with ID `{resource_id}` was not found" in result
+
+        # Check logging was called with resource info
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args
+        assert call_args[1]["resource_type"] == resource_type
+        assert call_args[1]["resource_id"] == resource_id
+
+    def test_handle_discord_error_permission_denied_with_resource(self, discord_service, mock_logger):
+        """Test Discord API error handling for permission denied with resource info."""
+        error = DiscordAPIError("Forbidden", 403)
+        operation = "testing operation"
+        resource_type = "Channel"
+        resource_id = "111111111111111111"
+
+        result = discord_service._handle_discord_error(error, operation, resource_type, resource_id)
+
+        # Check that it uses the centralized permission denied response
+        assert "# Access Denied" in result
+        assert f"Access to channel `{resource_id}` is not permitted" in result
+
+    def test_handle_discord_error_rate_limit(self, discord_service, mock_logger):
+        """Test Discord API error handling for rate limit."""
+        error = DiscordAPIError("Rate limited", 429)
+        operation = "testing operation"
+
+        result = discord_service._handle_discord_error(error, operation)
+
+        assert "❌ Error: Rate limit exceeded while testing operation" in result
+
+    def test_handle_discord_error_bad_request(self, discord_service, mock_logger):
+        """Test Discord API error handling for bad request."""
+        error = DiscordAPIError("Bad request", 400)
+        operation = "testing operation"
+
+        result = discord_service._handle_discord_error(error, operation)
+
+        assert "❌ Error: Invalid request while testing operation" in result
+
+    def test_handle_unexpected_error_basic(self, discord_service, mock_logger):
+        """Test centralized unexpected error handling without context."""
         error = ValueError("Test unexpected error")
         operation = "testing operation"
 
         result = discord_service._handle_unexpected_error(error, operation)
 
         # Check error message format
-        assert result.startswith("# Error\n\n")
+        assert result.startswith("❌ Unexpected error")
         assert (
             "Unexpected error while testing operation: Test unexpected error" in result
         )
@@ -87,104 +137,104 @@ class TestDiscordService:
         call_args = mock_logger.error.call_args
         assert "Unexpected error in testing operation" in call_args[0]
 
-    # Test permission validation methods
+    def test_handle_unexpected_error_with_context(self, discord_service, mock_logger):
+        """Test centralized unexpected error handling with context."""
+        error = ValueError("Test unexpected error")
+        operation = "testing operation"
+        context = "Additional context information"
 
-    def test_validate_guild_permission_allowed(self, discord_service, mock_settings):
-        """Test guild permission validation when allowed."""
-        guild_id = "123456789012345678"
-        mock_settings.is_guild_allowed.return_value = True
+        result = discord_service._handle_unexpected_error(error, operation, context)
 
-        result = discord_service._validate_guild_permission(guild_id)
+        # Check error message format includes context
+        assert "Context: Additional context information" in result
 
-        assert result is True
-        mock_settings.is_guild_allowed.assert_called_once_with(guild_id)
+        # Check logging was called with context
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args
+        assert call_args[1]["context"] == context
 
-    def test_validate_guild_permission_denied(self, discord_service, mock_settings):
-        """Test guild permission validation when denied."""
-        guild_id = "123456789012345678"
-        mock_settings.is_guild_allowed.return_value = False
+    def test_create_permission_denied_response_basic(self, discord_service, mock_logger):
+        """Test centralized permission denied response creation."""
+        resource_type = "guild"
+        resource_id = "123456789012345678"
 
-        result = discord_service._validate_guild_permission(guild_id)
+        result = discord_service._create_permission_denied_response(resource_type, resource_id)
 
-        assert result is False
-        mock_settings.is_guild_allowed.assert_called_once_with(guild_id)
+        assert "# Access Denied" in result
+        assert f"Access to {resource_type} `{resource_id}` is not permitted" in result
 
-    def test_validate_channel_permission_allowed(self, discord_service, mock_settings):
-        """Test channel permission validation when allowed."""
-        channel_id = "111111111111111111"
-        mock_settings.is_channel_allowed.return_value = True
+        # Check logging was called
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args
+        assert call_args[1]["resource_type"] == resource_type
+        assert call_args[1]["resource_id"] == resource_id
 
-        result = discord_service._validate_channel_permission(channel_id)
+    def test_create_permission_denied_response_with_context(self, discord_service, mock_logger):
+        """Test centralized permission denied response creation with context."""
+        resource_type = "channel"
+        resource_id = "111111111111111111"
+        context = "Additional permission context"
 
-        assert result is True
-        mock_settings.is_channel_allowed.assert_called_once_with(channel_id)
+        result = discord_service._create_permission_denied_response(resource_type, resource_id, context)
 
-    def test_validate_channel_permission_denied(self, discord_service, mock_settings):
-        """Test channel permission validation when denied."""
-        channel_id = "111111111111111111"
-        mock_settings.is_channel_allowed.return_value = False
+        assert "# Access Denied" in result
+        assert f"Access to {resource_type} `{resource_id}` is not permitted. {context}" in result
 
-        result = discord_service._validate_channel_permission(channel_id)
+    def test_create_not_found_response_basic(self, discord_service, mock_logger):
+        """Test centralized not found response creation."""
+        resource_type = "User"
+        resource_id = "999999999999999999"
 
-        assert result is False
-        mock_settings.is_channel_allowed.assert_called_once_with(channel_id)
+        result = discord_service._create_not_found_response(resource_type, resource_id)
 
-    def test_check_allowed_guilds(self, discord_service, mock_settings):
-        """Test allowed guilds checking."""
-        guild_id = "123456789012345678"
-        mock_settings.is_guild_allowed.return_value = True
+        assert f"# {resource_type} Not Found" in result
+        assert f"{resource_type} with ID `{resource_id}` was not found or bot has no access" in result
 
-        result = discord_service._check_allowed_guilds(guild_id)
+        # Check logging was called
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args
+        assert call_args[1]["resource_type"] == resource_type
+        assert call_args[1]["resource_id"] == resource_id
 
-        assert result is True
-        mock_settings.is_guild_allowed.assert_called_once_with(guild_id)
+    def test_create_not_found_response_with_context(self, discord_service, mock_logger):
+        """Test centralized not found response creation with context."""
+        resource_type = "Message"
+        resource_id = "888888888888888888"
+        context = "Message may have been deleted"
 
-    def test_check_allowed_channels(self, discord_service, mock_settings):
-        """Test allowed channels checking."""
-        channel_id = "111111111111111111"
-        mock_settings.is_channel_allowed.return_value = True
+        result = discord_service._create_not_found_response(resource_type, resource_id, context)
 
-        result = discord_service._check_allowed_channels(channel_id)
+        assert f"# {resource_type} Not Found" in result
+        assert f"{resource_type} with ID `{resource_id}` was not found. {context}" in result
 
-        assert result is True
-        mock_settings.is_channel_allowed.assert_called_once_with(channel_id)
+    def test_create_validation_error_response_basic(self, discord_service, mock_logger):
+        """Test centralized validation error response creation."""
+        validation_type = "Message content"
+        details = "Content cannot be empty"
 
-    # Test permission denied message methods
+        result = discord_service._create_validation_error_response(validation_type, details)
 
-    def test_get_guild_permission_denied_message(self, discord_service):
-        """Test guild permission denied message formatting."""
-        guild_id = "123456789012345678"
+        assert "❌ Error: Message content validation failed. Content cannot be empty" in result
 
-        result = discord_service._get_guild_permission_denied_message(guild_id)
+        # Check logging was called
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args
+        assert call_args[1]["validation_type"] == validation_type
+        assert call_args[1]["details"] == details
 
-        expected = f"# Access Denied\n\nAccess to guild `{guild_id}` is not permitted."
-        assert result == expected
+    def test_create_validation_error_response_with_suggestions(self, discord_service, mock_logger):
+        """Test centralized validation error response creation with suggestions."""
+        validation_type = "Message length"
+        details = "Content too long (2500 characters)"
+        suggestions = "Please shorten your message to under 2000 characters"
 
-    def test_get_channel_permission_denied_message(self, discord_service):
-        """Test channel permission denied message formatting."""
-        channel_id = "111111111111111111"
+        result = discord_service._create_validation_error_response(validation_type, details, suggestions)
 
-        result = discord_service._get_channel_permission_denied_message(channel_id)
+        assert "❌ Error: Message length validation failed. Content too long (2500 characters)" in result
+        assert "**Suggestions:**" in result
+        assert "Please shorten your message to under 2000 characters" in result
 
-        expected = (
-            f"# Access Denied\n\nAccess to channel `{channel_id}` is not permitted."
-        )
-        assert result == expected
 
-    def test_get_guild_containing_channel_permission_denied_message(
-        self, discord_service
-    ):
-        """Test guild containing channel permission denied message formatting."""
-        channel_id = "111111111111111111"
-
-        result = (
-            discord_service._get_guild_containing_channel_permission_denied_message(
-                channel_id
-            )
-        )
-
-        expected = f"# Access Denied\n\nAccess to guild containing channel `{channel_id}` is not permitted."
-        assert result == expected
 
     # Test that service methods are not yet implemented (will be implemented in Milestone 2)
 
@@ -272,7 +322,7 @@ class TestDiscordService:
         result = await discord_service.get_guilds_formatted()
 
         # Verify
-        assert result.startswith("# Error\n\n")
+        assert result.startswith("❌ Error:")
         assert "Discord API error while fetching guilds" in result
         mock_discord_client.get_user_guilds.assert_called_once()
 
@@ -406,7 +456,7 @@ class TestDiscordService:
         result = await discord_service.get_channels_formatted(guild_id)
 
         # Verify
-        assert result.startswith("# Error\n\n")
+        assert result.startswith("❌ Error:")
         assert "Discord API error while fetching channels" in result
 
     # Tests for get_messages_formatted method
@@ -525,10 +575,7 @@ class TestDiscordService:
 
         # Verify
         assert "# Access Denied" in result
-        assert (
-            f"Access to guild containing channel `{channel_id}` is not permitted"
-            in result
-        )
+        assert f"Access required for channel `{channel_id}`" in result
 
     @pytest.mark.asyncio
     async def test_get_messages_formatted_channel_not_found(
@@ -681,7 +728,7 @@ class TestDiscordService:
         result = await discord_service.get_messages_formatted(channel_id)
 
         # Verify
-        assert "# Error" in result
+        assert "❌ Error:" in result
         assert "Discord API error while fetching messages" in result
 
     @pytest.mark.asyncio
@@ -699,7 +746,7 @@ class TestDiscordService:
         result = await discord_service.get_messages_formatted(channel_id)
 
         # Verify
-        assert "# Error" in result
+        assert "❌ Unexpected error" in result
         assert "Unexpected error while fetching messages" in result
 
     # Tests for get_user_info_formatted method
@@ -824,23 +871,24 @@ class TestDiscordService:
         reason = "Disruptive behavior"
         
         mock_settings.is_guild_allowed.return_value = True
-        mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
-        mock_discord_client.get_user.return_value = {
-            "username": "testuser",
-            "global_name": "Test User"
-        }
-        mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
-        mock_discord_client.get_guild_member.side_effect = [
-            {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
-        ]
-        mock_discord_client.get_guild.return_value = {
+        guild_info_with_roles = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
                 {"id": "role2", "position": 3, "name": "User Role"}
             ]
         }
+        mock_discord_client.get_guild.return_value = guild_info_with_roles
+        mock_discord_client.get_user.return_value = {
+            "username": "testuser",
+            "global_name": "Test User"
+        }
+        mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
+        mock_discord_client.get_guild_member.side_effect = [
+            {"roles": ["role2"]},  # Target member (first call in _validate_moderation_target)
+            {"roles": ["role1"]},  # Bot member (first call in _validate_role_hierarchy)
+            {"roles": ["role2"]}   # Target member (second call in _validate_role_hierarchy)
+        ]
         mock_discord_client.edit_guild_member.return_value = None
 
         # Execute
@@ -900,7 +948,7 @@ class TestDiscordService:
         
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
         
-        assert "❌ Error: Guild `guild_id` not found or bot has no access." in result
+        assert "Guild with ID `guild_id` was not found or bot has no access." in result
 
     @pytest.mark.asyncio
     async def test_timeout_user_guild_access_denied(
@@ -912,7 +960,7 @@ class TestDiscordService:
         
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
         
-        assert "❌ Error: Bot does not have permission to access guild `guild_id`." in result
+        assert "Bot does not have permission to access guild `guild_id`." in result
 
     @pytest.mark.asyncio
     async def test_timeout_user_user_not_found(
@@ -1652,7 +1700,7 @@ class TestDiscordService:
         result = await discord_service.get_user_info_formatted(user_id)
 
         # Verify
-        assert "# Error" in result
+        assert "❌ Error:" in result
         assert "Discord API error while fetching user info" in result
 
     @pytest.mark.asyncio
@@ -1668,7 +1716,7 @@ class TestDiscordService:
         result = await discord_service.get_user_info_formatted(user_id)
 
         # Verify
-        assert "# Error" in result
+        assert "❌ Unexpected error" in result
         assert "Unexpected error while fetching user info" in result
 
     @pytest.mark.asyncio
@@ -1759,14 +1807,16 @@ class TestDiscordService:
     async def test_send_message_empty_content(self, discord_service):
         """Test sending message with empty content."""
         result = await discord_service.send_message("123", "")
-        assert "❌ Error: Message content cannot be empty." in result
+        assert "❌ Error: Message content validation failed" in result
+        assert "Content cannot be empty" in result
 
     @pytest.mark.asyncio
     async def test_send_message_content_too_long(self, discord_service):
         """Test sending message with content too long."""
         long_content = "a" * 2001
         result = await discord_service.send_message("123", long_content)
-        assert "❌ Error: Message content too long (2001 characters)" in result
+        assert "❌ Error: Message content validation failed" in result
+        assert "Content too long (2001 characters)" in result
 
     @pytest.mark.asyncio
     async def test_send_message_channel_not_allowed(
@@ -1775,7 +1825,8 @@ class TestDiscordService:
         """Test sending message to disallowed channel."""
         mock_settings.is_channel_allowed.return_value = False
         result = await discord_service.send_message("123", "test")
-        assert "❌ Error: Access to channel `123` is not permitted." in result
+        assert "# Access Denied" in result
+        assert "Access to channel `123` is not permitted" in result
 
     # Tests for send_direct_message method
     @pytest.mark.asyncio
@@ -2110,3 +2161,626 @@ class TestDiscordServiceHelperMethods:
         assert isinstance(discord_service._discord_client, (DiscordClient, AsyncMock))
         assert isinstance(discord_service._settings, (Settings, Mock))
         assert isinstance(discord_service._logger, (structlog.stdlib.BoundLogger, Mock))
+
+    # Tests for centralized resource retrieval methods
+
+    @pytest.mark.asyncio
+    async def test_get_guild_with_error_handling_success(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test successful guild retrieval with centralized error handling."""
+        # Setup
+        guild_id = "123456789012345678"
+        expected_guild = {"id": guild_id, "name": "Test Guild"}
+        mock_discord_client.get_guild.return_value = expected_guild
+
+        # Execute
+        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+
+        # Verify
+        assert guild_data == expected_guild
+        assert error_message is None
+        mock_discord_client.get_guild.assert_called_once_with(guild_id)
+        mock_logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_guild_with_error_handling_not_found(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test guild retrieval when guild is not found."""
+        # Setup
+        guild_id = "999999999999999999"
+        mock_discord_client.get_guild.side_effect = DiscordAPIError("Not Found", 404)
+
+        # Execute
+        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+
+        # Verify
+        assert guild_data is None
+        assert error_message == f"Guild with ID `{guild_id}` was not found or bot has no access."
+        mock_discord_client.get_guild.assert_called_once_with(guild_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_guild_with_error_handling_forbidden(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test guild retrieval when access is forbidden."""
+        # Setup
+        guild_id = "123456789012345678"
+        mock_discord_client.get_guild.side_effect = DiscordAPIError("Forbidden", 403)
+
+        # Execute
+        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+
+        # Verify
+        assert guild_data is None
+        assert error_message == f"Bot does not have permission to access guild `{guild_id}`."
+        mock_discord_client.get_guild.assert_called_once_with(guild_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_guild_with_error_handling_other_error(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test guild retrieval with other Discord API errors."""
+        # Setup
+        guild_id = "123456789012345678"
+        mock_discord_client.get_guild.side_effect = DiscordAPIError("Server Error", 500)
+
+        # Execute
+        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+
+        # Verify
+        assert guild_data is None
+        assert error_message == "Failed to access guild: Server Error"
+        mock_discord_client.get_guild.assert_called_once_with(guild_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_user_with_error_handling_success(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test successful user retrieval with centralized error handling."""
+        # Setup
+        user_id = "123456789012345678"
+        expected_user = {"id": user_id, "username": "testuser"}
+        mock_discord_client.get_user.return_value = expected_user
+
+        # Execute
+        user_data, error_message = await discord_service._get_user_with_error_handling(user_id)
+
+        # Verify
+        assert user_data == expected_user
+        assert error_message is None
+        mock_discord_client.get_user.assert_called_once_with(user_id)
+        mock_logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_user_with_error_handling_not_found(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test user retrieval when user is not found."""
+        # Setup
+        user_id = "999999999999999999"
+        mock_discord_client.get_user.side_effect = DiscordAPIError("Not Found", 404)
+
+        # Execute
+        user_data, error_message = await discord_service._get_user_with_error_handling(user_id)
+
+        # Verify
+        assert user_data is None
+        assert error_message == f"User with ID `{user_id}` was not found."
+        mock_discord_client.get_user.assert_called_once_with(user_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_user_with_error_handling_other_error(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test user retrieval with other Discord API errors."""
+        # Setup
+        user_id = "123456789012345678"
+        mock_discord_client.get_user.side_effect = DiscordAPIError("Server Error", 500)
+
+        # Execute
+        user_data, error_message = await discord_service._get_user_with_error_handling(user_id)
+
+        # Verify
+        assert user_data is None
+        assert error_message == "Failed to get user information: Server Error"
+        mock_discord_client.get_user.assert_called_once_with(user_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_channel_with_error_handling_success(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test successful channel retrieval with centralized error handling."""
+        # Setup
+        channel_id = "123456789012345678"
+        expected_channel = {"id": channel_id, "name": "general", "type": 0}
+        mock_discord_client.get_channel.return_value = expected_channel
+
+        # Execute
+        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+
+        # Verify
+        assert channel_data == expected_channel
+        assert error_message is None
+        mock_discord_client.get_channel.assert_called_once_with(channel_id)
+        mock_logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_channel_with_error_handling_not_found(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test channel retrieval when channel is not found."""
+        # Setup
+        channel_id = "999999999999999999"
+        mock_discord_client.get_channel.side_effect = DiscordAPIError("Not Found", 404)
+
+        # Execute
+        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+
+        # Verify
+        assert channel_data is None
+        assert error_message == f"Channel with ID `{channel_id}` was not found or bot has no access."
+        mock_discord_client.get_channel.assert_called_once_with(channel_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_channel_with_error_handling_forbidden(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test channel retrieval when access is forbidden."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_discord_client.get_channel.side_effect = DiscordAPIError("Forbidden", 403)
+
+        # Execute
+        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+
+        # Verify
+        assert channel_data is None
+        assert error_message == f"Bot does not have permission to access channel `{channel_id}`."
+        mock_discord_client.get_channel.assert_called_once_with(channel_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_channel_with_error_handling_other_error(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test channel retrieval with other Discord API errors."""
+        # Setup
+        channel_id = "123456789012345678"
+        mock_discord_client.get_channel.side_effect = DiscordAPIError("Server Error", 500)
+
+        # Execute
+        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+
+        # Verify
+        assert channel_data is None
+        assert error_message == "Failed to access channel: Server Error"
+        mock_discord_client.get_channel.assert_called_once_with(channel_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_member_with_error_handling_success(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test successful member retrieval with centralized error handling."""
+        # Setup
+        guild_id = "123456789012345678"
+        user_id = "987654321098765432"
+        expected_member = {
+            "user": {"id": user_id, "username": "testuser"},
+            "roles": ["role1", "role2"],
+            "joined_at": "2023-01-01T00:00:00Z"
+        }
+        mock_discord_client.get_guild_member.return_value = expected_member
+
+        # Execute
+        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+
+        # Verify
+        assert member_data == expected_member
+        assert error_message is None
+        mock_discord_client.get_guild_member.assert_called_once_with(guild_id, user_id)
+        mock_logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_member_with_error_handling_not_found(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test member retrieval when member is not found."""
+        # Setup
+        guild_id = "123456789012345678"
+        user_id = "999999999999999999"
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Not Found", 404)
+
+        # Execute
+        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+
+        # Verify
+        assert member_data is None
+        assert error_message == f"User `{user_id}` is not a member of guild `{guild_id}`."
+        mock_discord_client.get_guild_member.assert_called_once_with(guild_id, user_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_member_with_error_handling_forbidden(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test member retrieval when access is forbidden."""
+        # Setup
+        guild_id = "123456789012345678"
+        user_id = "987654321098765432"
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Forbidden", 403)
+
+        # Execute
+        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+
+        # Verify
+        assert member_data is None
+        assert error_message == f"Bot does not have permission to access member information in guild `{guild_id}`."
+        mock_discord_client.get_guild_member.assert_called_once_with(guild_id, user_id)
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_member_with_error_handling_other_error(
+        self, discord_service, mock_discord_client, mock_logger
+    ):
+        """Test member retrieval with other Discord API errors."""
+        # Setup
+        guild_id = "123456789012345678"
+        user_id = "987654321098765432"
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Server Error", 500)
+
+        # Execute
+        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+
+        # Verify
+        assert member_data is None
+        assert error_message == "Failed to get member information: Server Error"
+        mock_discord_client.get_guild_member.assert_called_once_with(guild_id, user_id)
+        mock_logger.warning.assert_called_once()
+
+
+class TestDiscordServiceFormattingUtilities:
+    """Test formatting utility methods for DiscordService."""
+
+    @pytest.fixture
+    def discord_service(self, mock_discord_client, mock_settings, mock_logger):
+        """Create a DiscordService instance for testing."""
+        return DiscordService(mock_discord_client, mock_settings, mock_logger)
+
+    # Tests for _format_success_response method
+
+    def test_format_success_response_basic(self, discord_service):
+        """Test basic success response formatting."""
+        action = "Message sent"
+        details = {
+            "message_id": "123456789012345678",
+            "channel": "#general",
+            "content": "Hello world!"
+        }
+
+        result = discord_service._format_success_response(action, details)
+
+        assert result.startswith("✅ Message sent successfully!")
+        assert "- **Message Id**: `123456789012345678`" in result
+        assert "- **Channel**: #general" in result
+        assert "- **Content**: Hello world!" in result
+
+    def test_format_success_response_with_long_content(self, discord_service):
+        """Test success response formatting with content truncation."""
+        action = "Message sent"
+        long_content = "A" * 150  # Content longer than 100 characters
+        details = {
+            "message_id": "123456789012345678",
+            "content": long_content
+        }
+
+        result = discord_service._format_success_response(action, details)
+
+        assert result.startswith("✅ Message sent successfully!")
+        assert "- **Message Id**: `123456789012345678`" in result
+        assert "- **Content**: " + "A" * 97 + "..." in result
+        assert len(result.split("- **Content**: ")[1].split("\n")[0]) == 100
+
+    def test_format_success_response_with_none_values(self, discord_service):
+        """Test success response formatting with None values."""
+        action = "User kicked"
+        details = {
+            "user_id": "123456789012345678",
+            "reason": None,  # None value should be skipped
+            "guild": "Test Guild"
+        }
+
+        result = discord_service._format_success_response(action, details)
+
+        assert result.startswith("✅ User kicked successfully!")
+        assert "- **User Id**: `123456789012345678`" in result
+        assert "- **Guild**: Test Guild" in result
+        assert "reason" not in result.lower()  # None values should be excluded
+
+    def test_format_success_response_empty_details(self, discord_service):
+        """Test success response formatting with empty details."""
+        action = "Operation completed"
+        details = {}
+
+        result = discord_service._format_success_response(action, details)
+
+        assert result == "✅ Operation completed successfully!"
+
+    def test_format_success_response_id_formatting(self, discord_service):
+        """Test that ID fields are properly formatted with backticks."""
+        action = "User banned"
+        details = {
+            "user_id": "123456789012345678",
+            "guild_id": "987654321098765432",
+            "id": "555555555555555555",
+            "regular_field": "not an id"
+        }
+
+        result = discord_service._format_success_response(action, details)
+
+        assert "- **User Id**: `123456789012345678`" in result
+        assert "- **Guild Id**: `987654321098765432`" in result
+        assert "- **Id**: `555555555555555555`" in result
+        assert "- **Regular Field**: not an id" in result  # No backticks for non-ID
+
+    # Tests for _format_user_display_name method
+
+    def test_format_user_display_name_new_system_username_only(self, discord_service):
+        """Test user display name formatting for new Discord username system."""
+        user = {
+            "username": "testuser",
+            "discriminator": "0",
+            "global_name": None
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "@testuser"
+
+    def test_format_user_display_name_new_system_with_global_name(self, discord_service):
+        """Test user display name formatting with global name in new system."""
+        user = {
+            "username": "testuser",
+            "discriminator": "0",
+            "global_name": "Test User"
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "Test User (@testuser)"
+
+    def test_format_user_display_name_new_system_same_names(self, discord_service):
+        """Test user display name formatting when global name equals username."""
+        user = {
+            "username": "testuser",
+            "discriminator": "0",
+            "global_name": "testuser"
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "@testuser"
+
+    def test_format_user_display_name_legacy_system_username_only(self, discord_service):
+        """Test user display name formatting for legacy Discord username system."""
+        user = {
+            "username": "testuser",
+            "discriminator": "1234",
+            "global_name": None
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "testuser#1234"
+
+    def test_format_user_display_name_legacy_system_with_global_name(self, discord_service):
+        """Test user display name formatting with global name in legacy system."""
+        user = {
+            "username": "testuser",
+            "discriminator": "1234",
+            "global_name": "Test User"
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "Test User (testuser#1234)"
+
+    def test_format_user_display_name_legacy_system_same_names(self, discord_service):
+        """Test user display name formatting when global name equals username in legacy system."""
+        user = {
+            "username": "testuser",
+            "discriminator": "1234",
+            "global_name": "testuser"
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "testuser#1234"
+
+    def test_format_user_display_name_missing_fields(self, discord_service):
+        """Test user display name formatting with missing fields."""
+        user = {}
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "@Unknown User"
+
+    def test_format_user_display_name_discriminator_0000(self, discord_service):
+        """Test user display name formatting with discriminator 0000 (treated as new system)."""
+        user = {
+            "username": "testuser",
+            "discriminator": "0000",
+            "global_name": "Test User"
+        }
+
+        result = discord_service._format_user_display_name(user)
+
+        assert result == "Test User (@testuser)"
+
+    # Tests for _format_timestamp method
+
+    def test_format_timestamp_valid_iso_format(self, discord_service):
+        """Test timestamp formatting with valid ISO format."""
+        timestamp = "2023-12-25T15:30:45Z"
+
+        result = discord_service._format_timestamp(timestamp)
+
+        assert result == "2023-12-25 15:30:45 UTC"
+
+    def test_format_timestamp_valid_iso_format_with_timezone(self, discord_service):
+        """Test timestamp formatting with ISO format including timezone."""
+        timestamp = "2023-12-25T15:30:45+00:00"
+
+        result = discord_service._format_timestamp(timestamp)
+
+        assert result == "2023-12-25 15:30:45 UTC"
+
+    def test_format_timestamp_empty_string(self, discord_service):
+        """Test timestamp formatting with empty string."""
+        timestamp = ""
+
+        result = discord_service._format_timestamp(timestamp)
+
+        assert result == "Unknown time"
+
+    def test_format_timestamp_none_value(self, discord_service):
+        """Test timestamp formatting with None value."""
+        timestamp = None
+
+        result = discord_service._format_timestamp(timestamp)
+
+        assert result == "Unknown time"
+
+    def test_format_timestamp_invalid_format(self, discord_service, mock_logger):
+        """Test timestamp formatting with invalid format."""
+        timestamp = "invalid-timestamp"
+
+        result = discord_service._format_timestamp(timestamp)
+
+        # Should return original timestamp if parsing fails
+        assert result == "invalid-timestamp"
+        # Should log a warning
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args
+        assert "Failed to parse timestamp" in call_args[0][0]
+
+    def test_format_timestamp_partial_iso_format(self, discord_service):
+        """Test timestamp formatting with partial ISO format."""
+        timestamp = "2023-12-25T15:30:45"
+
+        result = discord_service._format_timestamp(timestamp)
+
+        assert result == "2023-12-25 15:30:45 UTC"
+
+    # Tests for _truncate_content method
+
+    def test_truncate_content_short_content(self, discord_service):
+        """Test content truncation with content shorter than limit."""
+        content = "Hello world!"
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == "Hello world!"
+
+    def test_truncate_content_exact_length(self, discord_service):
+        """Test content truncation with content exactly at limit."""
+        content = "A" * 100
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == "A" * 100
+
+    def test_truncate_content_long_content(self, discord_service):
+        """Test content truncation with content longer than limit."""
+        content = "A" * 150
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == "A" * 97 + "..."
+        assert len(result) == 100
+
+    def test_truncate_content_default_length(self, discord_service):
+        """Test content truncation with default max length."""
+        content = "A" * 150
+
+        result = discord_service._truncate_content(content)
+
+        assert result == "A" * 97 + "..."
+        assert len(result) == 100
+
+    def test_truncate_content_empty_string(self, discord_service):
+        """Test content truncation with empty string."""
+        content = ""
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == ""
+
+    def test_truncate_content_none_value(self, discord_service):
+        """Test content truncation with None value."""
+        content = None
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == ""
+
+    def test_truncate_content_whitespace_only(self, discord_service):
+        """Test content truncation with whitespace-only content."""
+        content = "   \n\t   "
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == ""  # Should be stripped to empty string
+
+    def test_truncate_content_with_whitespace(self, discord_service):
+        """Test content truncation with leading/trailing whitespace."""
+        content = "  Hello world!  "
+        max_length = 100
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == "Hello world!"
+
+    def test_truncate_content_small_limit(self, discord_service):
+        """Test content truncation with very small limit."""
+        content = "Hello world!"
+        max_length = 5
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == "He..."
+        assert len(result) == 5
+
+    def test_truncate_content_limit_too_small_for_ellipsis(self, discord_service):
+        """Test content truncation with limit smaller than ellipsis."""
+        content = "Hello world!"
+        max_length = 2
+
+        result = discord_service._truncate_content(content, max_length)
+
+        # Should still add ellipsis even if it makes result longer than max_length
+        assert result == "..."
+        assert len(result) == 3
+
+    def test_truncate_content_non_string_input(self, discord_service):
+        """Test content truncation with non-string input."""
+        content = 12345
+        max_length = 3
+
+        result = discord_service._truncate_content(content, max_length)
+
+        assert result == "..."  # "12345" -> "..." (length 3)

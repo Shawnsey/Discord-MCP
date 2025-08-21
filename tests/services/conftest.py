@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import structlog
 
-from discord_mcp.config import Settings
-from discord_mcp.discord_client import DiscordClient
+from src.discord_mcp.config import Settings
+from src.discord_mcp.discord_client import DiscordClient
 
 
 @pytest.fixture

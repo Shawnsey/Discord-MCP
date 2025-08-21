@@ -11,8 +11,8 @@ from typing import get_type_hints
 
 import pytest
 
-from discord_mcp.services.discord_service import DiscordService
-from discord_mcp.services.interfaces import IDiscordService
+from src.discord_mcp.services.discord_service import DiscordService
+from src.discord_mcp.services.interfaces import IDiscordService
 
 
 class TestIDiscordServiceInterface:
