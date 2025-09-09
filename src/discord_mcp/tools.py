@@ -194,13 +194,13 @@ def register_tools(server: FastMCP) -> None:
 
     @server.tool(
         name="timeout_user",
-        description="Timeout a user in a Discord server for a specified duration"
+        description="Timeout a user in a Discord server for a specified duration",
     )
     async def timeout_user(
-        guild_id: str, 
-        user_id: str, 
-        duration_minutes: int = 10, 
-        reason: Optional[str] = None
+        guild_id: str,
+        user_id: str,
+        duration_minutes: int = 10,
+        reason: Optional[str] = None,
     ) -> str:
         """
         Timeout a user in a Discord server for a specified duration.
@@ -217,7 +217,7 @@ def register_tools(server: FastMCP) -> None:
         # Parameter validation
         if duration_minutes < 1:
             return "❌ Error: Timeout duration must be at least 1 minute."
-        
+
         if duration_minutes > 40320:  # 28 days * 24 hours * 60 minutes
             return "❌ Error: Timeout duration cannot exceed 28 days (40320 minutes)."
 
@@ -226,16 +226,16 @@ def register_tools(server: FastMCP) -> None:
         lifespan_ctx = ctx.request_context.lifespan_context
         discord_service: IDiscordService = lifespan_ctx["discord_service"]
 
-        return await discord_service.timeout_user(guild_id, user_id, duration_minutes, reason)
+        return await discord_service.timeout_user(
+            guild_id, user_id, duration_minutes, reason
+        )
 
     @server.tool(
         name="untimeout_user",
-        description="Remove timeout from a user in a Discord server"
+        description="Remove timeout from a user in a Discord server",
     )
     async def untimeout_user(
-        guild_id: str, 
-        user_id: str, 
-        reason: Optional[str] = None
+        guild_id: str, user_id: str, reason: Optional[str] = None
     ) -> str:
         """
         Remove timeout from a user in a Discord server.
@@ -255,14 +255,9 @@ def register_tools(server: FastMCP) -> None:
 
         return await discord_service.untimeout_user(guild_id, user_id, reason)
 
-    @server.tool(
-        name="kick_user",
-        description="Kick a user from a Discord server"
-    )
+    @server.tool(name="kick_user", description="Kick a user from a Discord server")
     async def kick_user(
-        guild_id: str, 
-        user_id: str, 
-        reason: Optional[str] = None
+        guild_id: str, user_id: str, reason: Optional[str] = None
     ) -> str:
         """
         Kick a user from a Discord server.
@@ -284,13 +279,13 @@ def register_tools(server: FastMCP) -> None:
 
     @server.tool(
         name="ban_user",
-        description="Ban a user from a Discord server with optional message deletion"
+        description="Ban a user from a Discord server with optional message deletion",
     )
     async def ban_user(
-        guild_id: str, 
-        user_id: str, 
-        reason: Optional[str] = None, 
-        delete_message_days: int = 0
+        guild_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
+        delete_message_days: int = 0,
     ) -> str:
         """
         Ban a user from a Discord server with optional message deletion.
@@ -307,7 +302,7 @@ def register_tools(server: FastMCP) -> None:
         # Parameter validation for delete_message_days (0-7 range)
         if delete_message_days < 0:
             return "❌ Error: delete_message_days must be 0 or greater."
-        
+
         if delete_message_days > 7:
             return "❌ Error: delete_message_days cannot exceed 7 days (Discord API limit)."
 
@@ -316,6 +311,8 @@ def register_tools(server: FastMCP) -> None:
         lifespan_ctx = ctx.request_context.lifespan_context
         discord_service: IDiscordService = lifespan_ctx["discord_service"]
 
-        return await discord_service.ban_user(guild_id, user_id, reason, delete_message_days)
+        return await discord_service.ban_user(
+            guild_id, user_id, reason, delete_message_days
+        )
 
     logger.info("Discord MCP tools registered successfully")

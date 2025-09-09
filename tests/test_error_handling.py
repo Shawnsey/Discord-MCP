@@ -48,13 +48,17 @@ def discord_service(mock_discord_client, mock_settings, mock_logger):
 class TestCentralizedErrorHandling:
     """Test cases for centralized error handling methods."""
 
-    def test_create_permission_denied_response_basic(self, discord_service, mock_logger):
+    def test_create_permission_denied_response_basic(
+        self, discord_service, mock_logger
+    ):
         """Test basic permission denied response creation."""
-        result = discord_service._create_permission_denied_response("guild", "123456789")
-        
+        result = discord_service._create_permission_denied_response(
+            "guild", "123456789"
+        )
+
         expected = "# Access Denied\n\nAccess to guild `123456789` is not permitted."
         assert result == expected
-        
+
         # Verify logging
         mock_logger.warning.assert_called_once_with(
             "Permission denied",
@@ -63,14 +67,18 @@ class TestCentralizedErrorHandling:
             context=None,
         )
 
-    def test_create_permission_denied_response_with_context(self, discord_service, mock_logger):
+    def test_create_permission_denied_response_with_context(
+        self, discord_service, mock_logger
+    ):
         """Test permission denied response with additional context."""
         context = "Bot is not a member of this guild."
-        result = discord_service._create_permission_denied_response("guild", "123456789", context)
-        
+        result = discord_service._create_permission_denied_response(
+            "guild", "123456789", context
+        )
+
         expected = f"# Access Denied\n\nAccess to guild `123456789` is not permitted. {context}"
         assert result == expected
-        
+
         # Verify logging
         mock_logger.warning.assert_called_once_with(
             "Permission denied",
@@ -82,10 +90,10 @@ class TestCentralizedErrorHandling:
     def test_create_not_found_response_basic(self, discord_service, mock_logger):
         """Test basic not found response creation."""
         result = discord_service._create_not_found_response("Guild", "123456789")
-        
+
         expected = "# Guild Not Found\n\nGuild with ID `123456789` was not found or bot has no access."
         assert result == expected
-        
+
         # Verify logging
         mock_logger.warning.assert_called_once_with(
             "Resource not found",
@@ -97,11 +105,15 @@ class TestCentralizedErrorHandling:
     def test_create_not_found_response_with_context(self, discord_service, mock_logger):
         """Test not found response with additional context."""
         context = "The guild may have been deleted."
-        result = discord_service._create_not_found_response("Guild", "123456789", context)
-        
-        expected = f"# Guild Not Found\n\nGuild with ID `123456789` was not found. {context}"
+        result = discord_service._create_not_found_response(
+            "Guild", "123456789", context
+        )
+
+        expected = (
+            f"# Guild Not Found\n\nGuild with ID `123456789` was not found. {context}"
+        )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.warning.assert_called_once_with(
             "Resource not found",
@@ -115,10 +127,12 @@ class TestCentralizedErrorHandling:
         result = discord_service._create_validation_error_response(
             "Message content", "Content cannot be empty."
         )
-        
-        expected = "❌ Error: Message content validation failed. Content cannot be empty."
+
+        expected = (
+            "❌ Error: Message content validation failed. Content cannot be empty."
+        )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.warning.assert_called_once_with(
             "Validation error",
@@ -127,19 +141,23 @@ class TestCentralizedErrorHandling:
             suggestions=None,
         )
 
-    def test_create_validation_error_response_with_suggestions(self, discord_service, mock_logger):
+    def test_create_validation_error_response_with_suggestions(
+        self, discord_service, mock_logger
+    ):
         """Test validation error response with suggestions."""
-        suggestions = "- Ensure message content is not empty\n- Check for whitespace-only content"
+        suggestions = (
+            "- Ensure message content is not empty\n- Check for whitespace-only content"
+        )
         result = discord_service._create_validation_error_response(
             "Message content", "Content cannot be empty.", suggestions
         )
-        
+
         expected = (
             "❌ Error: Message content validation failed. Content cannot be empty.\n\n"
             f"**Suggestions:**\n{suggestions}"
         )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.warning.assert_called_once_with(
             "Validation error",
@@ -152,10 +170,10 @@ class TestCentralizedErrorHandling:
         """Test Discord API error handling for 403 Forbidden."""
         error = DiscordAPIError("Forbidden", status_code=403)
         result = discord_service._handle_discord_error(error, "sending message")
-        
+
         expected = "❌ Error: Bot does not have permission to perform this operation while sending message."
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Discord API error in sending message",
@@ -170,10 +188,10 @@ class TestCentralizedErrorHandling:
         """Test Discord API error handling for 404 Not Found."""
         error = DiscordAPIError("Not Found", status_code=404)
         result = discord_service._handle_discord_error(error, "fetching user")
-        
+
         expected = "❌ Error: Resource not found while fetching user."
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Discord API error in fetching user",
@@ -188,10 +206,10 @@ class TestCentralizedErrorHandling:
         """Test Discord API error handling for 429 Rate Limited."""
         error = DiscordAPIError("Too Many Requests", status_code=429)
         result = discord_service._handle_discord_error(error, "fetching messages")
-        
+
         expected = "❌ Error: Rate limit exceeded while fetching messages. Please try again later."
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Discord API error in fetching messages",
@@ -206,10 +224,10 @@ class TestCentralizedErrorHandling:
         """Test Discord API error handling for 400 Bad Request."""
         error = DiscordAPIError("Bad Request", status_code=400)
         result = discord_service._handle_discord_error(error, "creating channel")
-        
+
         expected = "❌ Error: Invalid request while creating channel. Please check your parameters."
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Discord API error in creating channel",
@@ -224,10 +242,12 @@ class TestCentralizedErrorHandling:
         """Test Discord API error handling for unknown status codes."""
         error = DiscordAPIError("Internal Server Error", status_code=500)
         result = discord_service._handle_discord_error(error, "updating guild")
-        
-        expected = "❌ Error: Discord API error while updating guild: Internal Server Error"
+
+        expected = (
+            "❌ Error: Discord API error while updating guild: Internal Server Error"
+        )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Discord API error in updating guild",
@@ -242,10 +262,12 @@ class TestCentralizedErrorHandling:
         """Test Discord API error handling when no status code is available."""
         error = DiscordAPIError("Connection Error")
         result = discord_service._handle_discord_error(error, "connecting to API")
-        
-        expected = "❌ Error: Discord API error while connecting to API: Connection Error"
+
+        expected = (
+            "❌ Error: Discord API error while connecting to API: Connection Error"
+        )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Discord API error in connecting to API",
@@ -260,13 +282,13 @@ class TestCentralizedErrorHandling:
         """Test unexpected error handling."""
         error = ValueError("Invalid input parameter")
         result = discord_service._handle_unexpected_error(error, "processing request")
-        
+
         expected = (
             "❌ Unexpected error while processing request: Invalid input parameter\n\n"
             "Please try again or contact support if the issue persists."
         )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Unexpected error in processing request",
@@ -276,18 +298,20 @@ class TestCentralizedErrorHandling:
             context=None,
         )
 
-    def test_handle_unexpected_error_different_exception_types(self, discord_service, mock_logger):
+    def test_handle_unexpected_error_different_exception_types(
+        self, discord_service, mock_logger
+    ):
         """Test unexpected error handling with different exception types."""
         # Test with KeyError
         error = KeyError("missing_key")
         result = discord_service._handle_unexpected_error(error, "accessing data")
-        
+
         expected = (
             "❌ Unexpected error while accessing data: 'missing_key'\n\n"
             "Please try again or contact support if the issue persists."
         )
         assert result == expected
-        
+
         # Verify logging
         mock_logger.error.assert_called_once_with(
             "Unexpected error in accessing data",
@@ -304,13 +328,17 @@ class TestErrorHandlingIntegration:
     def test_permission_denied_different_resource_types(self, discord_service):
         """Test permission denied responses for different resource types."""
         # Test guild permission denied
-        guild_result = discord_service._create_permission_denied_response("guild", "123")
+        guild_result = discord_service._create_permission_denied_response(
+            "guild", "123"
+        )
         assert "guild `123`" in guild_result
-        
+
         # Test channel permission denied
-        channel_result = discord_service._create_permission_denied_response("channel", "456")
+        channel_result = discord_service._create_permission_denied_response(
+            "channel", "456"
+        )
         assert "channel `456`" in channel_result
-        
+
         # Test user permission denied
         user_result = discord_service._create_permission_denied_response("user", "789")
         assert "user `789`" in user_result
@@ -321,12 +349,12 @@ class TestErrorHandlingIntegration:
         guild_result = discord_service._create_not_found_response("Guild", "123")
         assert "# Guild Not Found" in guild_result
         assert "Guild with ID `123`" in guild_result
-        
+
         # Test Channel not found
         channel_result = discord_service._create_not_found_response("Channel", "456")
         assert "# Channel Not Found" in channel_result
         assert "Channel with ID `456`" in channel_result
-        
+
         # Test User not found
         user_result = discord_service._create_not_found_response("User", "789")
         assert "# User Not Found" in user_result
@@ -340,7 +368,7 @@ class TestErrorHandlingIntegration:
         )
         assert "Message content validation failed" in content_result
         assert "Too long" in content_result
-        
+
         # Test user input validation
         input_result = discord_service._create_validation_error_response(
             "User input", "Invalid user ID format."

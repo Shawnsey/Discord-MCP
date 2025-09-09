@@ -482,7 +482,10 @@ class TestModerationToolsIntegration:
         actual_result = extract_result(result)
 
         # Verify error message is returned
-        assert "❌ Error: Timeout duration cannot exceed 28 days (40320 minutes)." in actual_result
+        assert (
+            "❌ Error: Timeout duration cannot exceed 28 days (40320 minutes)."
+            in actual_result
+        )
 
         # Verify the service was NOT called
         mock_discord_service.timeout_user.assert_not_called()
@@ -727,7 +730,10 @@ class TestModerationToolsIntegration:
         actual_result = extract_result(result)
 
         # Verify error message is returned
-        assert "❌ Error: delete_message_days cannot exceed 7 days (Discord API limit)." in actual_result
+        assert (
+            "❌ Error: delete_message_days cannot exceed 7 days (Discord API limit)."
+            in actual_result
+        )
 
         # Verify the service was NOT called
         mock_discord_service.ban_user.assert_not_called()
@@ -782,7 +788,9 @@ class TestModerationToolsIntegration:
         self, server_with_tools, mock_discord_service
     ):
         """Test that moderation tools preserve error handling from service layer."""
-        error_response = "❌ Error: Bot does not have 'moderate_members' permission in this server."
+        error_response = (
+            "❌ Error: Bot does not have 'moderate_members' permission in this server."
+        )
         mock_discord_service.timeout_user.return_value = error_response
 
         # Mock the server context

@@ -1,11 +1,9 @@
 """Command line interface for the Discord MCP server."""
 
 import argparse
-import asyncio
 import logging
 import signal
 import sys
-from typing import Optional
 
 import structlog
 

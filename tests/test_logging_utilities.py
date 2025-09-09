@@ -41,10 +41,9 @@ class TestLoggingUtilities:
         """Test _log_operation_start method."""
         # Test basic operation start logging
         discord_service._log_operation_start("test operation")
-        
+
         mock_logger.info.assert_called_once_with(
-            "Starting test operation",
-            operation="test operation"
+            "Starting test operation", operation="test operation"
         )
 
     def test_log_operation_start_with_context(self, discord_service, mock_logger):
@@ -54,74 +53,69 @@ class TestLoggingUtilities:
             "message sending",
             channel_id="123456789",
             content_length=50,
-            reply_to="987654321"
+            reply_to="987654321",
         )
-        
+
         mock_logger.info.assert_called_once_with(
             "Starting message sending",
             operation="message sending",
             channel_id="123456789",
             content_length=50,
-            reply_to="987654321"
+            reply_to="987654321",
         )
 
     def test_log_operation_success(self, discord_service, mock_logger):
         """Test _log_operation_success method."""
         # Test basic operation success logging
         discord_service._log_operation_success("test operation")
-        
+
         mock_logger.info.assert_called_once_with(
             "test operation completed successfully",
             operation="test operation",
-            success=True
+            success=True,
         )
 
     def test_log_operation_success_with_context(self, discord_service, mock_logger):
         """Test _log_operation_success method with additional context."""
         # Test operation success logging with additional context
         discord_service._log_operation_success(
-            "guild list retrieval",
-            guild_count=5,
-            filtered=True
+            "guild list retrieval", guild_count=5, filtered=True
         )
-        
+
         mock_logger.info.assert_called_once_with(
             "guild list retrieval completed successfully",
             operation="guild list retrieval",
             success=True,
             guild_count=5,
-            filtered=True
+            filtered=True,
         )
 
     def test_log_operation_error(self, discord_service, mock_logger):
         """Test _log_operation_error method."""
         # Create a test exception
         test_error = ValueError("Test error message")
-        
+
         # Test basic operation error logging
         discord_service._log_operation_error("test operation", test_error)
-        
+
         mock_logger.error.assert_called_once_with(
             "Error in test operation",
             operation="test operation",
             error="Test error message",
             error_type="ValueError",
-            success=False
+            success=False,
         )
 
     def test_log_operation_error_with_context(self, discord_service, mock_logger):
         """Test _log_operation_error method with additional context."""
         # Create a test exception
         test_error = RuntimeError("Connection failed")
-        
+
         # Test operation error logging with additional context
         discord_service._log_operation_error(
-            "message sending",
-            test_error,
-            channel_id="123456789",
-            user_id="987654321"
+            "message sending", test_error, channel_id="123456789", user_id="987654321"
         )
-        
+
         mock_logger.error.assert_called_once_with(
             "Error in message sending",
             operation="message sending",
@@ -129,10 +123,12 @@ class TestLoggingUtilities:
             error_type="RuntimeError",
             success=False,
             channel_id="123456789",
-            user_id="987654321"
+            user_id="987654321",
         )
 
-    def test_log_operation_error_with_different_exception_types(self, discord_service, mock_logger):
+    def test_log_operation_error_with_different_exception_types(
+        self, discord_service, mock_logger
+    ):
         """Test _log_operation_error method with different exception types."""
         # Test with different exception types
         exceptions = [
@@ -140,20 +136,20 @@ class TestLoggingUtilities:
             TypeError("Type error"),
             KeyError("Key error"),
             AttributeError("Attribute error"),
-            RuntimeError("Runtime error")
+            RuntimeError("Runtime error"),
         ]
-        
+
         for i, exception in enumerate(exceptions):
             mock_logger.reset_mock()
-            
+
             discord_service._log_operation_error(f"operation_{i}", exception)
-            
+
             mock_logger.error.assert_called_once_with(
                 f"Error in operation_{i}",
                 operation=f"operation_{i}",
                 error=str(exception),
                 error_type=type(exception).__name__,
-                success=False
+                success=False,
             )
 
     def test_logging_utilities_integration(self, discord_service, mock_logger):
@@ -161,22 +157,24 @@ class TestLoggingUtilities:
         # Simulate a typical operation flow
         operation_name = "user info retrieval"
         user_id = "123456789"
-        
+
         # Start operation
         discord_service._log_operation_start(operation_name, user_id=user_id)
-        
+
         # Success case
-        discord_service._log_operation_success(operation_name, user_id=user_id, username="testuser")
-        
+        discord_service._log_operation_success(
+            operation_name, user_id=user_id, username="testuser"
+        )
+
         # Verify calls
         assert mock_logger.info.call_count == 2
-        
+
         # Check start call
         start_call = mock_logger.info.call_args_list[0]
         assert start_call[0][0] == f"Starting {operation_name}"
         assert start_call[1]["operation"] == operation_name
         assert start_call[1]["user_id"] == user_id
-        
+
         # Check success call
         success_call = mock_logger.info.call_args_list[1]
         assert success_call[0][0] == f"{operation_name} completed successfully"
@@ -191,23 +189,25 @@ class TestLoggingUtilities:
         operation_name = "message sending"
         channel_id = "123456789"
         error = ConnectionError("Network timeout")
-        
+
         # Start operation
         discord_service._log_operation_start(operation_name, channel_id=channel_id)
-        
+
         # Error case
-        discord_service._log_operation_error(operation_name, error, channel_id=channel_id)
-        
+        discord_service._log_operation_error(
+            operation_name, error, channel_id=channel_id
+        )
+
         # Verify calls
         assert mock_logger.info.call_count == 1
         assert mock_logger.error.call_count == 1
-        
+
         # Check start call
         start_call = mock_logger.info.call_args_list[0]
         assert start_call[0][0] == f"Starting {operation_name}"
         assert start_call[1]["operation"] == operation_name
         assert start_call[1]["channel_id"] == channel_id
-        
+
         # Check error call
         error_call = mock_logger.error.call_args_list[0]
         assert error_call[0][0] == f"Error in {operation_name}"
@@ -223,15 +223,15 @@ class TestLoggingUtilities:
         discord_service._log_operation_start("simple operation")
         discord_service._log_operation_success("simple operation")
         discord_service._log_operation_error("simple operation", ValueError("error"))
-        
+
         # Verify all calls were made
         assert mock_logger.info.call_count == 2
         assert mock_logger.error.call_count == 1
-        
+
         # Check that basic structure is maintained
         for call in mock_logger.info.call_args_list:
             assert "operation" in call[1]
-            
+
         error_call = mock_logger.error.call_args_list[0]
         assert "operation" in error_call[1]
         assert "error" in error_call[1]
@@ -242,12 +242,9 @@ class TestLoggingUtilities:
         """Test logging utilities with None values in context."""
         # Test with None values in context
         discord_service._log_operation_start(
-            "test operation",
-            user_id=None,
-            channel_id="123456789",
-            guild_id=None
+            "test operation", user_id=None, channel_id="123456789", guild_id=None
         )
-        
+
         # Verify call includes None values
         call_args = mock_logger.info.call_args_list[0]
         assert call_args[1]["user_id"] is None
@@ -263,11 +260,11 @@ class TestLoggingUtilities:
             "bool_value": True,
             "list_value": [1, 2, 3],
             "dict_value": {"key": "value"},
-            "none_value": None
+            "none_value": None,
         }
-        
+
         discord_service._log_operation_success("complex operation", **complex_context)
-        
+
         # Verify all context data is passed through
         call_args = mock_logger.info.call_args_list[0]
         for key, value in complex_context.items():

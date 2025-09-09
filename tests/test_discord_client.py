@@ -10,8 +10,12 @@ import pytest
 from aiohttp import ClientError, ClientResponse
 
 from discord_mcp.config import Settings
-from discord_mcp.discord_client import (DiscordAPIError, DiscordClient,
-                                        RateLimiter, RateLimitError)
+from discord_mcp.discord_client import (
+    DiscordAPIError,
+    DiscordClient,
+    RateLimiter,
+    RateLimitError,
+)
 
 
 @pytest.fixture
@@ -373,9 +377,9 @@ class TestDiscordModerationMethods:
             "user": {"id": "123456789", "username": "testuser"},
             "nick": "TestNick",
             "roles": ["role1", "role2"],
-            "joined_at": "2023-01-01T00:00:00.000000+00:00"
+            "joined_at": "2023-01-01T00:00:00.000000+00:00",
         }
-        
+
         with patch.object(
             discord_client, "get", return_value=expected_member
         ) as mock_get:
@@ -391,7 +395,7 @@ class TestDiscordModerationMethods:
         ) as mock_get:
             with pytest.raises(DiscordAPIError) as exc_info:
                 await discord_client.get_guild_member("guild123", "user456")
-            
+
             mock_get.assert_called_once_with("/guilds/guild123/members/user456")
             assert exc_info.value.status_code == 404
 
@@ -401,23 +405,23 @@ class TestDiscordModerationMethods:
         timeout_until = "2024-01-15T14:30:00.000000+00:00"
         expected_response = {
             "user": {"id": "123456789", "username": "testuser"},
-            "communication_disabled_until": timeout_until
+            "communication_disabled_until": timeout_until,
         }
-        
+
         with patch.object(
             discord_client, "patch", return_value=expected_response
         ) as mock_patch:
             result = await discord_client.edit_guild_member(
-                "guild123", 
-                "user456", 
+                "guild123",
+                "user456",
                 reason="Disruptive behavior",
-                communication_disabled_until=timeout_until
+                communication_disabled_until=timeout_until,
             )
-            
+
             mock_patch.assert_called_once_with(
                 "/guilds/guild123/members/user456",
                 data={"communication_disabled_until": timeout_until},
-                headers={"X-Audit-Log-Reason": "Disruptive behavior"}
+                headers={"X-Audit-Log-Reason": "Disruptive behavior"},
             )
             assert result == expected_response
 
@@ -426,80 +430,72 @@ class TestDiscordModerationMethods:
         """Test editing guild member to remove timeout successfully."""
         expected_response = {
             "user": {"id": "123456789", "username": "testuser"},
-            "communication_disabled_until": None
+            "communication_disabled_until": None,
         }
-        
+
         with patch.object(
             discord_client, "patch", return_value=expected_response
         ) as mock_patch:
             result = await discord_client.edit_guild_member(
-                "guild123", 
-                "user456", 
+                "guild123",
+                "user456",
                 reason="Timeout removed",
-                communication_disabled_until=None
+                communication_disabled_until=None,
             )
-            
+
             # None values are filtered out by the implementation
             mock_patch.assert_called_once_with(
                 "/guilds/guild123/members/user456",
                 data={},
-                headers={"X-Audit-Log-Reason": "Timeout removed"}
+                headers={"X-Audit-Log-Reason": "Timeout removed"},
             )
             assert result == expected_response
 
     @pytest.mark.asyncio
     async def test_edit_guild_member_without_reason(self, discord_client):
         """Test editing guild member without audit log reason."""
-        with patch.object(
-            discord_client, "patch", return_value={}
-        ) as mock_patch:
+        with patch.object(discord_client, "patch", return_value={}) as mock_patch:
             await discord_client.edit_guild_member(
-                "guild123", 
-                "user456", 
-                communication_disabled_until=None
+                "guild123", "user456", communication_disabled_until=None
             )
-            
+
             # None values are filtered out by the implementation
             mock_patch.assert_called_once_with(
-                "/guilds/guild123/members/user456",
-                data={},
-                headers={}
+                "/guilds/guild123/members/user456", data={}, headers={}
             )
 
     @pytest.mark.asyncio
     async def test_edit_guild_member_with_valid_fields(self, discord_client):
         """Test editing guild member with valid non-None fields."""
-        with patch.object(
-            discord_client, "patch", return_value={}
-        ) as mock_patch:
+        with patch.object(discord_client, "patch", return_value={}) as mock_patch:
             await discord_client.edit_guild_member(
-                "guild123", 
-                "user456", 
+                "guild123",
+                "user456",
                 reason="Update nickname",
                 nick="NewNickname",
-                roles=["role1", "role2"]
+                roles=["role1", "role2"],
             )
-            
+
             # Only non-None values should be included
             mock_patch.assert_called_once_with(
                 "/guilds/guild123/members/user456",
                 data={"nick": "NewNickname", "roles": ["role1", "role2"]},
-                headers={"X-Audit-Log-Reason": "Update nickname"}
+                headers={"X-Audit-Log-Reason": "Update nickname"},
             )
 
     @pytest.mark.asyncio
     async def test_edit_guild_member_insufficient_permissions(self, discord_client):
         """Test editing guild member with insufficient permissions."""
         with patch.object(
-            discord_client, "patch", side_effect=DiscordAPIError("Missing Permissions", 403)
+            discord_client,
+            "patch",
+            side_effect=DiscordAPIError("Missing Permissions", 403),
         ) as mock_patch:
             with pytest.raises(DiscordAPIError) as exc_info:
                 await discord_client.edit_guild_member(
-                    "guild123", 
-                    "user456", 
-                    communication_disabled_until=None
+                    "guild123", "user456", communication_disabled_until=None
                 )
-            
+
             assert exc_info.value.status_code == 403
             assert "Missing Permissions" in str(exc_info.value)
 
@@ -511,41 +507,32 @@ class TestDiscordModerationMethods:
         ) as mock_patch:
             with pytest.raises(RateLimitError) as exc_info:
                 await discord_client.edit_guild_member(
-                    "guild123", 
-                    "user456", 
-                    communication_disabled_until=None
+                    "guild123", "user456", communication_disabled_until=None
                 )
-            
+
             assert exc_info.value.retry_after == 2.5
 
     @pytest.mark.asyncio
     async def test_kick_guild_member_success(self, discord_client):
         """Test kicking guild member successfully."""
-        with patch.object(
-            discord_client, "delete", return_value={}
-        ) as mock_delete:
+        with patch.object(discord_client, "delete", return_value={}) as mock_delete:
             await discord_client.kick_guild_member(
-                "guild123", 
-                "user456", 
-                reason="Violation of rules"
+                "guild123", "user456", reason="Violation of rules"
             )
-            
+
             mock_delete.assert_called_once_with(
                 "/guilds/guild123/members/user456",
-                headers={"X-Audit-Log-Reason": "Violation of rules"}
+                headers={"X-Audit-Log-Reason": "Violation of rules"},
             )
 
     @pytest.mark.asyncio
     async def test_kick_guild_member_without_reason(self, discord_client):
         """Test kicking guild member without audit log reason."""
-        with patch.object(
-            discord_client, "delete", return_value={}
-        ) as mock_delete:
+        with patch.object(discord_client, "delete", return_value={}) as mock_delete:
             await discord_client.kick_guild_member("guild123", "user456")
-            
+
             mock_delete.assert_called_once_with(
-                "/guilds/guild123/members/user456",
-                headers={}
+                "/guilds/guild123/members/user456", headers={}
             )
 
     @pytest.mark.asyncio
@@ -556,18 +543,20 @@ class TestDiscordModerationMethods:
         ) as mock_delete:
             with pytest.raises(DiscordAPIError) as exc_info:
                 await discord_client.kick_guild_member("guild123", "user456")
-            
+
             assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
     async def test_kick_guild_member_insufficient_permissions(self, discord_client):
         """Test kicking guild member with insufficient permissions."""
         with patch.object(
-            discord_client, "delete", side_effect=DiscordAPIError("Missing Permissions", 403)
+            discord_client,
+            "delete",
+            side_effect=DiscordAPIError("Missing Permissions", 403),
         ) as mock_delete:
             with pytest.raises(DiscordAPIError) as exc_info:
                 await discord_client.kick_guild_member("guild123", "user456")
-            
+
             assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -578,107 +567,91 @@ class TestDiscordModerationMethods:
         ) as mock_delete:
             with pytest.raises(RateLimitError) as exc_info:
                 await discord_client.kick_guild_member("guild123", "user456")
-            
+
             assert exc_info.value.retry_after == 1.5
 
     @pytest.mark.asyncio
     async def test_ban_guild_member_success(self, discord_client):
         """Test banning guild member successfully."""
-        with patch.object(
-            discord_client, "put", return_value={}
-        ) as mock_put:
+        with patch.object(discord_client, "put", return_value={}) as mock_put:
             await discord_client.ban_guild_member(
-                "guild123", 
-                "user456", 
+                "guild123",
+                "user456",
                 reason="Severe rule violation",
-                delete_message_days=7
+                delete_message_days=7,
             )
-            
+
             mock_put.assert_called_once_with(
                 "/guilds/guild123/bans/user456",
                 data={"delete_message_days": 7},
-                headers={"X-Audit-Log-Reason": "Severe rule violation"}
+                headers={"X-Audit-Log-Reason": "Severe rule violation"},
             )
 
     @pytest.mark.asyncio
     async def test_ban_guild_member_without_message_deletion(self, discord_client):
         """Test banning guild member without message deletion."""
-        with patch.object(
-            discord_client, "put", return_value={}
-        ) as mock_put:
+        with patch.object(discord_client, "put", return_value={}) as mock_put:
             await discord_client.ban_guild_member(
-                "guild123", 
-                "user456", 
-                reason="Rule violation"
+                "guild123", "user456", reason="Rule violation"
             )
-            
+
             mock_put.assert_called_once_with(
                 "/guilds/guild123/bans/user456",
                 data={},
-                headers={"X-Audit-Log-Reason": "Rule violation"}
+                headers={"X-Audit-Log-Reason": "Rule violation"},
             )
 
     @pytest.mark.asyncio
     async def test_ban_guild_member_without_reason(self, discord_client):
         """Test banning guild member without audit log reason."""
-        with patch.object(
-            discord_client, "put", return_value={}
-        ) as mock_put:
+        with patch.object(discord_client, "put", return_value={}) as mock_put:
             await discord_client.ban_guild_member("guild123", "user456")
-            
+
             mock_put.assert_called_once_with(
-                "/guilds/guild123/bans/user456",
-                data={},
-                headers={}
+                "/guilds/guild123/bans/user456", data={}, headers={}
             )
 
     @pytest.mark.asyncio
     async def test_ban_guild_member_delete_message_days_clamped(self, discord_client):
         """Test banning guild member with delete_message_days clamped to valid range."""
-        with patch.object(
-            discord_client, "put", return_value={}
-        ) as mock_put:
+        with patch.object(discord_client, "put", return_value={}) as mock_put:
             # Test upper bound clamping
             await discord_client.ban_guild_member(
-                "guild123", 
-                "user456", 
-                delete_message_days=10  # Should be clamped to 7
+                "guild123", "user456", delete_message_days=10  # Should be clamped to 7
             )
-            
+
             mock_put.assert_called_once_with(
                 "/guilds/guild123/bans/user456",
                 data={"delete_message_days": 7},
-                headers={}
+                headers={},
             )
 
     @pytest.mark.asyncio
     async def test_ban_guild_member_delete_message_days_negative(self, discord_client):
         """Test banning guild member with negative delete_message_days (not added to data)."""
-        with patch.object(
-            discord_client, "put", return_value={}
-        ) as mock_put:
+        with patch.object(discord_client, "put", return_value={}) as mock_put:
             await discord_client.ban_guild_member(
-                "guild123", 
-                "user456", 
-                delete_message_days=-5  # Negative values don't get added to data
+                "guild123",
+                "user456",
+                delete_message_days=-5,  # Negative values don't get added to data
             )
-            
+
             # delete_message_days <= 0 are not added to the data
             mock_put.assert_called_once_with(
-                "/guilds/guild123/bans/user456",
-                data={},
-                headers={}
+                "/guilds/guild123/bans/user456", data={}, headers={}
             )
 
     @pytest.mark.asyncio
     async def test_ban_guild_member_already_banned(self, discord_client):
         """Test banning guild member when already banned."""
         with patch.object(
-            discord_client, "put", side_effect=DiscordAPIError("User is already banned", 400)
+            discord_client,
+            "put",
+            side_effect=DiscordAPIError("User is already banned", 400),
         ) as mock_put:
             with pytest.raises(DiscordAPIError) as exc_info:
                 await discord_client.ban_guild_member("guild123", "user456")
-            
+
             assert exc_info.value.status_code == 400
             assert "already banned" in str(exc_info.value)
 
@@ -686,11 +659,13 @@ class TestDiscordModerationMethods:
     async def test_ban_guild_member_insufficient_permissions(self, discord_client):
         """Test banning guild member with insufficient permissions."""
         with patch.object(
-            discord_client, "put", side_effect=DiscordAPIError("Missing Permissions", 403)
+            discord_client,
+            "put",
+            side_effect=DiscordAPIError("Missing Permissions", 403),
         ) as mock_put:
             with pytest.raises(DiscordAPIError) as exc_info:
                 await discord_client.ban_guild_member("guild123", "user456")
-            
+
             assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -701,33 +676,41 @@ class TestDiscordModerationMethods:
         ) as mock_put:
             with pytest.raises(RateLimitError) as exc_info:
                 await discord_client.ban_guild_member("guild123", "user456")
-            
+
             assert exc_info.value.retry_after == 3.0
 
     @pytest.mark.asyncio
-    async def test_moderation_methods_with_rate_limiter_integration(self, discord_client):
+    async def test_moderation_methods_with_rate_limiter_integration(
+        self, discord_client
+    ):
         """Test that moderation methods properly integrate with the rate limiter."""
         # Start the client to initialize session
         await discord_client.start()
-        
+
         try:
             # Mock the rate limiter to track calls
-            with patch.object(discord_client.rate_limiter, 'acquire', new_callable=AsyncMock) as mock_acquire:
+            with patch.object(
+                discord_client.rate_limiter, "acquire", new_callable=AsyncMock
+            ) as mock_acquire:
                 # Mock the session to avoid actual HTTP requests
                 mock_response = AsyncMock()
                 mock_response.status = 200
                 mock_response.json.return_value = {}
-                
+
                 # Properly mock the async context manager
                 mock_context_manager = AsyncMock()
                 mock_context_manager.__aenter__.return_value = mock_response
                 mock_context_manager.__aexit__.return_value = None
-                
-                with patch.object(discord_client.session, 'request', return_value=mock_context_manager):
-                    await discord_client.edit_guild_member("guild123", "user456", communication_disabled_until=None)
+
+                with patch.object(
+                    discord_client.session, "request", return_value=mock_context_manager
+                ):
+                    await discord_client.edit_guild_member(
+                        "guild123", "user456", communication_disabled_until=None
+                    )
                     await discord_client.kick_guild_member("guild123", "user456")
                     await discord_client.ban_guild_member("guild123", "user456")
-            
+
             # Rate limiter should have been called for each request
             assert mock_acquire.call_count == 3
         finally:

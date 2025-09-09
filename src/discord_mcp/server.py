@@ -17,7 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from .config import Settings, get_settings
 from .discord_client import DiscordClient
 from .resources import register_resources
-from .services import DiscordService, IDiscordService
+from .services import DiscordService
 from .tools import register_tools
 
 logger = structlog.get_logger(__name__)

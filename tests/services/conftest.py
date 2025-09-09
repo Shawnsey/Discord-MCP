@@ -147,11 +147,11 @@ def sample_guild_member_data():
         "user": {
             "id": "123456789012345678",
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         },
         "roles": ["role1", "role2"],
         "communication_disabled_until": None,
-        "joined_at": "2023-01-01T00:00:00Z"
+        "joined_at": "2023-01-01T00:00:00Z",
     }
 
 
@@ -166,26 +166,26 @@ def sample_guild_roles_data():
             "permissions": "8",
             "color": 0,
             "hoist": False,
-            "managed": True
+            "managed": True,
         },
         {
-            "id": "role2", 
+            "id": "role2",
             "name": "User Role",
             "position": 3,
             "permissions": "104324161",
             "color": 16711680,
             "hoist": False,
-            "managed": False
+            "managed": False,
         },
         {
             "id": "role3",
-            "name": "Admin Role", 
+            "name": "Admin Role",
             "position": 10,
             "permissions": "8",
             "color": 255,
             "hoist": True,
-            "managed": False
-        }
+            "managed": False,
+        },
     ]
 
 
@@ -197,5 +197,5 @@ def sample_bot_user_data():
         "username": "testbot",
         "discriminator": "0000",
         "bot": True,
-        "avatar": "bot_avatar_hash"
+        "avatar": "bot_avatar_hash",
     }

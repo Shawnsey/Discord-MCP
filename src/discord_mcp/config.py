@@ -5,7 +5,6 @@ This module handles loading and validating configuration from environment variab
 using Pydantic settings for type safety and validation.
 """
 
-import os
 from typing import List, Optional, Set
 
 import structlog

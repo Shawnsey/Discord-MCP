@@ -69,14 +69,18 @@ class TestDiscordService:
         call_args = mock_logger.error.call_args
         assert "Discord API error in testing operation" in call_args[0]
 
-    def test_handle_discord_error_with_resource_info(self, discord_service, mock_logger):
+    def test_handle_discord_error_with_resource_info(
+        self, discord_service, mock_logger
+    ):
         """Test centralized Discord API error handling with resource info."""
         error = DiscordAPIError("Not found", 404)
         operation = "testing operation"
         resource_type = "Guild"
         resource_id = "123456789012345678"
 
-        result = discord_service._handle_discord_error(error, operation, resource_type, resource_id)
+        result = discord_service._handle_discord_error(
+            error, operation, resource_type, resource_id
+        )
 
         # Check that it uses the centralized not found response
         assert "# Guild Not Found" in result
@@ -88,14 +92,18 @@ class TestDiscordService:
         assert call_args[1]["resource_type"] == resource_type
         assert call_args[1]["resource_id"] == resource_id
 
-    def test_handle_discord_error_permission_denied_with_resource(self, discord_service, mock_logger):
+    def test_handle_discord_error_permission_denied_with_resource(
+        self, discord_service, mock_logger
+    ):
         """Test Discord API error handling for permission denied with resource info."""
         error = DiscordAPIError("Forbidden", 403)
         operation = "testing operation"
         resource_type = "Channel"
         resource_id = "111111111111111111"
 
-        result = discord_service._handle_discord_error(error, operation, resource_type, resource_id)
+        result = discord_service._handle_discord_error(
+            error, operation, resource_type, resource_id
+        )
 
         # Check that it uses the centralized permission denied response
         assert "# Access Denied" in result
@@ -153,12 +161,16 @@ class TestDiscordService:
         call_args = mock_logger.error.call_args
         assert call_args[1]["context"] == context
 
-    def test_create_permission_denied_response_basic(self, discord_service, mock_logger):
+    def test_create_permission_denied_response_basic(
+        self, discord_service, mock_logger
+    ):
         """Test centralized permission denied response creation."""
         resource_type = "guild"
         resource_id = "123456789012345678"
 
-        result = discord_service._create_permission_denied_response(resource_type, resource_id)
+        result = discord_service._create_permission_denied_response(
+            resource_type, resource_id
+        )
 
         assert "# Access Denied" in result
         assert f"Access to {resource_type} `{resource_id}` is not permitted" in result
@@ -169,16 +181,23 @@ class TestDiscordService:
         assert call_args[1]["resource_type"] == resource_type
         assert call_args[1]["resource_id"] == resource_id
 
-    def test_create_permission_denied_response_with_context(self, discord_service, mock_logger):
+    def test_create_permission_denied_response_with_context(
+        self, discord_service, mock_logger
+    ):
         """Test centralized permission denied response creation with context."""
         resource_type = "channel"
         resource_id = "111111111111111111"
         context = "Additional permission context"
 
-        result = discord_service._create_permission_denied_response(resource_type, resource_id, context)
+        result = discord_service._create_permission_denied_response(
+            resource_type, resource_id, context
+        )
 
         assert "# Access Denied" in result
-        assert f"Access to {resource_type} `{resource_id}` is not permitted. {context}" in result
+        assert (
+            f"Access to {resource_type} `{resource_id}` is not permitted. {context}"
+            in result
+        )
 
     def test_create_not_found_response_basic(self, discord_service, mock_logger):
         """Test centralized not found response creation."""
@@ -188,7 +207,10 @@ class TestDiscordService:
         result = discord_service._create_not_found_response(resource_type, resource_id)
 
         assert f"# {resource_type} Not Found" in result
-        assert f"{resource_type} with ID `{resource_id}` was not found or bot has no access" in result
+        assert (
+            f"{resource_type} with ID `{resource_id}` was not found or bot has no access"
+            in result
+        )
 
         # Check logging was called
         mock_logger.warning.assert_called_once()
@@ -202,19 +224,29 @@ class TestDiscordService:
         resource_id = "888888888888888888"
         context = "Message may have been deleted"
 
-        result = discord_service._create_not_found_response(resource_type, resource_id, context)
+        result = discord_service._create_not_found_response(
+            resource_type, resource_id, context
+        )
 
         assert f"# {resource_type} Not Found" in result
-        assert f"{resource_type} with ID `{resource_id}` was not found. {context}" in result
+        assert (
+            f"{resource_type} with ID `{resource_id}` was not found. {context}"
+            in result
+        )
 
     def test_create_validation_error_response_basic(self, discord_service, mock_logger):
         """Test centralized validation error response creation."""
         validation_type = "Message content"
         details = "Content cannot be empty"
 
-        result = discord_service._create_validation_error_response(validation_type, details)
+        result = discord_service._create_validation_error_response(
+            validation_type, details
+        )
 
-        assert "❌ Error: Message content validation failed. Content cannot be empty" in result
+        assert (
+            "❌ Error: Message content validation failed. Content cannot be empty"
+            in result
+        )
 
         # Check logging was called
         mock_logger.warning.assert_called_once()
@@ -222,19 +254,24 @@ class TestDiscordService:
         assert call_args[1]["validation_type"] == validation_type
         assert call_args[1]["details"] == details
 
-    def test_create_validation_error_response_with_suggestions(self, discord_service, mock_logger):
+    def test_create_validation_error_response_with_suggestions(
+        self, discord_service, mock_logger
+    ):
         """Test centralized validation error response creation with suggestions."""
         validation_type = "Message length"
         details = "Content too long (2500 characters)"
         suggestions = "Please shorten your message to under 2000 characters"
 
-        result = discord_service._create_validation_error_response(validation_type, details, suggestions)
+        result = discord_service._create_validation_error_response(
+            validation_type, details, suggestions
+        )
 
-        assert "❌ Error: Message length validation failed. Content too long (2500 characters)" in result
+        assert (
+            "❌ Error: Message length validation failed. Content too long (2500 characters)"
+            in result
+        )
         assert "**Suggestions:**" in result
         assert "Please shorten your message to under 2000 characters" in result
-
-
 
     # Test that service methods are not yet implemented (will be implemented in Milestone 2)
 
@@ -869,30 +906,36 @@ class TestDiscordService:
         user_id = "987654321098765432"
         duration_minutes = 30
         reason = "Disruptive behavior"
-        
+
         mock_settings.is_guild_allowed.return_value = True
         guild_info_with_roles = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.get_guild.return_value = guild_info_with_roles
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
-            {"roles": ["role2"]},  # Target member (first call in _validate_moderation_target)
+            {
+                "roles": ["role2"]
+            },  # Target member (first call in _validate_moderation_target)
             {"roles": ["role1"]},  # Bot member (first call in _validate_role_hierarchy)
-            {"roles": ["role2"]}   # Target member (second call in _validate_role_hierarchy)
+            {
+                "roles": ["role2"]
+            },  # Target member (second call in _validate_role_hierarchy)
         ]
         mock_discord_client.edit_guild_member.return_value = None
 
         # Execute
-        result = await discord_service.timeout_user(guild_id, user_id, duration_minutes, reason)
+        result = await discord_service.timeout_user(
+            guild_id, user_id, duration_minutes, reason
+        )
 
         # Verify
         assert "✅ User timed out successfully!" in result
@@ -900,7 +943,7 @@ class TestDiscordService:
         assert "Test Guild" in result
         assert "30 minutes" in result
         assert "Disruptive behavior" in result
-        
+
         # Verify Discord client calls
         mock_discord_client.edit_guild_member.assert_called_once()
         call_args = mock_discord_client.edit_guild_member.call_args
@@ -908,7 +951,7 @@ class TestDiscordService:
         assert call_args[1]["user_id"] == user_id
         assert call_args[1]["reason"] == reason
         assert "communication_disabled_until" in call_args[1]
-        
+
         # Verify logging
         mock_logger.info.assert_called()
 
@@ -926,15 +969,13 @@ class TestDiscordService:
         assert "40320 minutes" in result
 
     @pytest.mark.asyncio
-    async def test_timeout_user_guild_not_allowed(
-        self, discord_service, mock_settings
-    ):
+    async def test_timeout_user_guild_not_allowed(self, discord_service, mock_settings):
         """Test timeout when guild is not allowed."""
         guild_id = "123456789012345678"
         mock_settings.is_guild_allowed.return_value = False
-        
+
         result = await discord_service.timeout_user(guild_id, "user_id", 10)
-        
+
         assert "# Access Denied" in result
         assert f"Access to guild `{guild_id}` is not permitted" in result
 
@@ -945,9 +986,9 @@ class TestDiscordService:
         """Test timeout when guild is not found."""
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Not Found", 404)
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
+
         assert "Guild with ID `guild_id` was not found or bot has no access." in result
 
     @pytest.mark.asyncio
@@ -957,9 +998,9 @@ class TestDiscordService:
         """Test timeout when guild access is denied."""
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Forbidden", 403)
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
+
         assert "Bot does not have permission to access guild `guild_id`." in result
 
     @pytest.mark.asyncio
@@ -970,9 +1011,9 @@ class TestDiscordService:
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.side_effect = DiscordAPIError("Not Found", 404)
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
+
         assert "❌ Error: User `user_id` not found." in result
 
     @pytest.mark.asyncio
@@ -984,25 +1025,28 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         # Mock guild with roles where target has higher role
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 3, "name": "Bot Role"},
-                {"id": "role2", "position": 5, "name": "Admin Role"}  # Higher position
-            ]
+                {"id": "role2", "position": 5, "name": "Admin Role"},  # Higher position
+            ],
         }
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
-        assert "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions." in result
+
+        assert (
+            "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions."
+            in result
+        )
         assert "Bot's highest role" in result
         assert "Target user's highest role" in result
 
@@ -1016,27 +1060,30 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.edit_guild_member.side_effect = DiscordAPIError(
             "Missing Permissions", 403
         )
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
-        assert "❌ Error: Bot does not have 'moderate_members' permission in Test Guild." in result
+
+        assert (
+            "❌ Error: Bot does not have 'moderate_members' permission in Test Guild."
+            in result
+        )
 
     @pytest.mark.asyncio
     async def test_timeout_user_user_not_in_guild(
@@ -1048,26 +1095,26 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.edit_guild_member.side_effect = DiscordAPIError(
             "Not Found", 404
         )
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
+
         assert "❌ Error: User `user_id` is not a member of Test Guild." in result
 
     @pytest.mark.asyncio
@@ -1080,27 +1127,30 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.edit_guild_member.side_effect = DiscordAPIError(
             "Bad Request", 400
         )
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
-        assert "❌ Error: Invalid timeout request. User may already be timed out or parameters are invalid." in result
+
+        assert (
+            "❌ Error: Invalid timeout request. User may already be timed out or parameters are invalid."
+            in result
+        )
 
     @pytest.mark.asyncio
     async def test_timeout_user_unexpected_error(
@@ -1109,9 +1159,9 @@ class TestDiscordService:
         """Test timeout with unexpected error."""
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.side_effect = ValueError("Unexpected error")
-        
+
         result = await discord_service.timeout_user("guild_id", "user_id", 10)
-        
+
         assert "❌ Unexpected error while timing out user: Unexpected error" in result
         mock_logger.error.assert_called()
 
@@ -1125,25 +1175,27 @@ class TestDiscordService:
         guild_id = "123456789012345678"
         user_id = "987654321098765432"
         reason = "Timeout period served"
-        
+
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
             {"roles": ["role2"]},  # Target member
-            {"communication_disabled_until": "2024-01-15T14:30:00Z"}  # Member with timeout
+            {
+                "communication_disabled_until": "2024-01-15T14:30:00Z"
+            },  # Member with timeout
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.edit_guild_member.return_value = None
 
@@ -1156,7 +1208,7 @@ class TestDiscordService:
         assert "Test Guild" in result
         assert "Timeout period served" in result
         assert "2024-01-15 14:30:00 UTC" in result
-        
+
         # Verify Discord client calls
         mock_discord_client.edit_guild_member.assert_called_once()
         call_args = mock_discord_client.edit_guild_member.call_args
@@ -1164,7 +1216,7 @@ class TestDiscordService:
         assert call_args[1]["user_id"] == user_id
         assert call_args[1]["reason"] == reason
         assert call_args[1]["communication_disabled_until"] is None
-        
+
         # Verify logging
         mock_logger.info.assert_called()
 
@@ -1177,24 +1229,24 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
             {"roles": ["role2"]},  # Target member
-            {"communication_disabled_until": None}  # Member without timeout
+            {"communication_disabled_until": None},  # Member without timeout
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
-        
+
         result = await discord_service.untimeout_user("guild_id", "user_id")
-        
+
         assert "ℹ️ User Test User is not currently timed out in Test Guild." in result
 
     # Tests for kick_user method
@@ -1207,25 +1259,25 @@ class TestDiscordService:
         guild_id = "123456789012345678"
         user_id = "987654321098765432"
         reason = "Violation of rules"
-        
+
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role2"]},  # Member exists check
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.kick_guild_member.return_value = None
 
@@ -1237,14 +1289,12 @@ class TestDiscordService:
         assert "Test User" in result
         assert "Test Guild" in result
         assert "Violation of rules" in result
-        
+
         # Verify Discord client calls
         mock_discord_client.kick_guild_member.assert_called_once_with(
-            guild_id=guild_id,
-            user_id=user_id,
-            reason=reason
+            guild_id=guild_id, user_id=user_id, reason=reason
         )
-        
+
         # Verify logging
         mock_logger.info.assert_called()
 
@@ -1257,12 +1307,14 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Not Found", 404)
-        
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )
+
         result = await discord_service.kick_user("guild_id", "user_id")
-        
+
         assert "❌ Error: User `user_id` is not a member of Test Guild." in result
 
     @pytest.mark.asyncio
@@ -1275,28 +1327,31 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role2"]},  # Member exists check
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.kick_guild_member.side_effect = DiscordAPIError(
             "kick_members permission required", 403
         )
-        
+
         result = await discord_service.kick_user("guild_id", "user_id")
-        
-        assert "❌ Error: Bot does not have 'kick_members' permission in Test Guild." in result
+
+        assert (
+            "❌ Error: Bot does not have 'kick_members' permission in Test Guild."
+            in result
+        )
 
     # Tests for ban_user method
     @pytest.mark.asyncio
@@ -1309,30 +1364,34 @@ class TestDiscordService:
         user_id = "987654321098765432"
         reason = "Repeated violations"
         delete_message_days = 3
-        
+
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
-        mock_discord_client.get.side_effect = DiscordAPIError("Not Found", 404)  # Not banned
+        mock_discord_client.get.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )  # Not banned
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
-            ]
+                {"id": "role2", "position": 3, "name": "User Role"},
+            ],
         }
         mock_discord_client.ban_guild_member.return_value = None
 
         # Execute
-        result = await discord_service.ban_user(guild_id, user_id, reason, delete_message_days)
+        result = await discord_service.ban_user(
+            guild_id, user_id, reason, delete_message_days
+        )
 
         # Verify
         assert "✅ User banned successfully!" in result
@@ -1340,15 +1399,15 @@ class TestDiscordService:
         assert "Test Guild" in result
         assert "Repeated violations" in result
         assert "3 day(s) of messages deleted" in result
-        
+
         # Verify Discord client calls
         mock_discord_client.ban_guild_member.assert_called_once_with(
             guild_id=guild_id,
             user_id=user_id,
             reason=reason,
-            delete_message_days=delete_message_days
+            delete_message_days=delete_message_days,
         )
-        
+
         # Verify logging
         mock_logger.info.assert_called()
 
@@ -1356,13 +1415,17 @@ class TestDiscordService:
     async def test_ban_user_invalid_delete_days_negative(self, discord_service):
         """Test ban with invalid negative delete_message_days."""
         result = await discord_service.ban_user("guild_id", "user_id", None, -1)
-        assert "❌ Error: delete_message_days must be between 0 and 7 (got -1)." in result
+        assert (
+            "❌ Error: delete_message_days must be between 0 and 7 (got -1)." in result
+        )
 
     @pytest.mark.asyncio
     async def test_ban_user_invalid_delete_days_too_high(self, discord_service):
         """Test ban with invalid high delete_message_days."""
         result = await discord_service.ban_user("guild_id", "user_id", None, 8)
-        assert "❌ Error: delete_message_days must be between 0 and 7 (got 8)." in result
+        assert (
+            "❌ Error: delete_message_days must be between 0 and 7 (got 8)." in result
+        )
 
     @pytest.mark.asyncio
     async def test_ban_user_already_banned(
@@ -1373,13 +1436,18 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
-        mock_discord_client.get.return_value = {"user": {"id": "user_id"}}  # Already banned
-        
+        mock_discord_client.get.return_value = {
+            "user": {"id": "user_id"}
+        }  # Already banned
+
         result = await discord_service.ban_user("guild_id", "user_id")
-        
-        assert "❌ Error: User `Test User` (`user_id`) is already banned from Test Guild." in result
+
+        assert (
+            "❌ Error: User `Test User` (`user_id`) is already banned from Test Guild."
+            in result
+        )
 
     @pytest.mark.asyncio
     async def test_ban_user_not_in_guild_success(
@@ -1389,15 +1457,19 @@ class TestDiscordService:
         # Setup
         guild_id = "123456789012345678"
         user_id = "987654321098765432"
-        
+
         mock_settings.is_guild_allowed.return_value = True
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
-        mock_discord_client.get.side_effect = DiscordAPIError("Not Found", 404)  # Not banned
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Not Found", 404)  # Not in guild
+        mock_discord_client.get.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )  # Not banned
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )  # Not in guild
         mock_discord_client.ban_guild_member.return_value = None
 
         # Execute
@@ -1417,17 +1489,24 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = {"name": "Test Guild"}
         mock_discord_client.get_user.return_value = {
             "username": "testuser",
-            "global_name": "Test User"
+            "global_name": "Test User",
         }
-        mock_discord_client.get.side_effect = DiscordAPIError("Not Found", 404)  # Not banned
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Not Found", 404)  # Not in guild
+        mock_discord_client.get.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )  # Not banned
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )  # Not in guild
         mock_discord_client.ban_guild_member.side_effect = DiscordAPIError(
             "ban_members permission required", 403
         )
-        
+
         result = await discord_service.ban_user("guild_id", "user_id")
-        
-        assert "❌ Error: Bot does not have 'ban_members' permission in Test Guild." in result
+
+        assert (
+            "❌ Error: Bot does not have 'ban_members' permission in Test Guild."
+            in result
+        )
 
     # Tests for role hierarchy validation
     @pytest.mark.asyncio
@@ -1439,23 +1518,23 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "roles": [
                 {"id": "role1", "position": 5, "name": "Bot Role"},
-                {"id": "role2", "position": 3, "name": "User Role"}
+                {"id": "role2", "position": 3, "name": "User Role"},
             ]
         }
-        
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
+
         assert result is None  # No error means validation passed
 
     @pytest.mark.asyncio
@@ -1467,24 +1546,27 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.return_value = {
             "roles": [
                 {"id": "role1", "position": 3, "name": "Bot Role"},
-                {"id": "role2", "position": 5, "name": "Admin Role"}  # Higher position
+                {"id": "role2", "position": 5, "name": "Admin Role"},  # Higher position
             ]
         }
-        
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
-        assert "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions." in result
+
+        assert (
+            "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions."
+            in result
+        )
         assert "**Bot's highest role**: Bot Role (position 3)" in result
         assert "**Target user's highest role**: Admin Role (position 5)" in result
 
@@ -1497,23 +1579,24 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role1"]}   # Target member (same role)
+            {"roles": ["role1"]},  # Target member (same role)
         ]
         mock_discord_client.get_guild.return_value = {
-            "roles": [
-                {"id": "role1", "position": 5, "name": "Same Role"}
-            ]
+            "roles": [{"id": "role1", "position": 5, "name": "Same Role"}]
         }
-        
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
-        assert "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions." in result
+
+        assert (
+            "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions."
+            in result
+        )
 
     @pytest.mark.asyncio
     async def test_validate_role_hierarchy_target_not_in_guild(
@@ -1524,18 +1607,21 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            DiscordAPIError("Not Found", 404)  # Target member not found
+            DiscordAPIError("Not Found", 404),  # Target member not found
         ]
-        
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
-        assert "❌ Error: User `Test User` (`987654321098765432`) is not a member of Test Guild." in result
+
+        assert (
+            "❌ Error: User `Test User` (`987654321098765432`) is not a member of Test Guild."
+            in result
+        )
 
     @pytest.mark.asyncio
     async def test_validate_role_hierarchy_bot_info_error(
@@ -1546,14 +1632,16 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Server Error", 500)
-        
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Server Error", 500
+        )
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
+
         assert "❌ Error: Could not validate bot permissions in Test Guild." in result
         mock_logger.error.assert_called()
 
@@ -1566,18 +1654,18 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": ["role1"]},  # Bot member
-            {"roles": ["role2"]}   # Target member
+            {"roles": ["role2"]},  # Target member
         ]
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Server Error", 500)
-        
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
+
         assert "❌ Error: Could not validate role hierarchy in Test Guild." in result
         mock_logger.error.assert_called()
 
@@ -1590,13 +1678,15 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
-        mock_discord_client.get_current_user.side_effect = ValueError("Unexpected error")
-        
+
+        mock_discord_client.get_current_user.side_effect = ValueError(
+            "Unexpected error"
+        )
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
+
         assert "❌ Error: Could not validate role hierarchy: Unexpected error" in result
         mock_logger.error.assert_called()
 
@@ -1609,20 +1699,23 @@ class TestDiscordService:
         target_user_id = "987654321098765432"
         guild_name = "Test Guild"
         target_username = "Test User"
-        
+
         mock_discord_client.get_current_user.return_value = {"id": "bot_user_id"}
         mock_discord_client.get_guild_member.side_effect = [
             {"roles": []},  # Bot member with no roles
-            {"roles": []}   # Target member with no roles
+            {"roles": []},  # Target member with no roles
         ]
         mock_discord_client.get_guild.return_value = {"roles": []}
-        
+
         result = await discord_service._validate_role_hierarchy(
             guild_id, target_user_id, guild_name, target_username
         )
-        
+
         # Both have @everyone role (position -1), so bot cannot moderate
-        assert "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions." in result
+        assert (
+            "❌ Error: Cannot moderate `Test User` due to role hierarchy restrictions."
+            in result
+        )
         assert "@everyone" in result
         # Should not contain optional fields
         assert "**Discriminator**" not in result
@@ -2030,23 +2123,27 @@ class TestDiscordService:
 
         # Mock guild info (called multiple times for hierarchy validation)
         mock_guild = {
-            "id": "guild123", 
+            "id": "guild123",
             "name": "Test Guild",
             "roles": [
                 {"id": "role1", "name": "Member", "position": 1},
                 {"id": "role2", "name": "Moderator", "position": 2},
-            ]
+            ],
         }
         mock_discord_client.get_guild.return_value = mock_guild
 
         # Mock user info
-        mock_user = {"id": "user123", "username": "testuser", "global_name": "Test User"}
+        mock_user = {
+            "id": "user123",
+            "username": "testuser",
+            "global_name": "Test User",
+        }
         mock_discord_client.get_user.return_value = mock_user
 
         # Mock current bot user for hierarchy validation
         mock_discord_client.get_current_user.return_value = {
             "id": "bot123",
-            "username": "TestBot"
+            "username": "TestBot",
         }
 
         # Mock guild member calls - ban_user calls get_guild_member multiple times:
@@ -2055,20 +2152,14 @@ class TestDiscordService:
         # 3. Then in hierarchy validation for target member
         mock_discord_client.get_guild_member.side_effect = [
             # First call - check if user is in guild
-            {
-                "user": {"id": "user123"},
-                "roles": ["role1"]  # Target has member role
-            },
+            {"user": {"id": "user123"}, "roles": ["role1"]},  # Target has member role
             # Bot member (second call in hierarchy validation)
-            {
-                "user": {"id": "bot123"},
-                "roles": ["role2"]  # Bot has moderator role
-            },
+            {"user": {"id": "bot123"}, "roles": ["role2"]},  # Bot has moderator role
             # Target member (third call in hierarchy validation)
             {
                 "user": {"id": "user123"},
-                "roles": ["role1"]  # Target has member role (lower)
-            }
+                "roles": ["role1"],  # Target has member role (lower)
+            },
         ]
 
         # Mock ban check (404 means not banned)
@@ -2077,9 +2168,7 @@ class TestDiscordService:
         # Mock successful ban
         mock_discord_client.ban_guild_member.return_value = None
 
-        result = await discord_service.ban_user(
-            "guild123", "user123", "Test reason", 1
-        )
+        result = await discord_service.ban_user("guild123", "user123", "Test reason", 1)
 
         # Verify the result
         assert "✅ User banned successfully!" in result
@@ -2091,17 +2180,15 @@ class TestDiscordService:
         # Verify the ban was called correctly
         mock_discord_client.ban_guild_member.assert_called_once_with(
             guild_id="guild123",
-            user_id="user123", 
+            user_id="user123",
             reason="Test reason",
-            delete_message_days=1
+            delete_message_days=1,
         )
 
     @pytest.mark.asyncio
     async def test_ban_user_invalid_delete_days(self, discord_service):
         """Test ban with invalid delete_message_days parameter."""
-        result = await discord_service.ban_user(
-            "guild123", "user123", "Test reason", 8
-        )
+        result = await discord_service.ban_user("guild123", "user123", "Test reason", 8)
         assert "❌ Error: delete_message_days must be between 0 and 7" in result
 
         result = await discord_service.ban_user(
@@ -2123,7 +2210,11 @@ class TestDiscordService:
         mock_discord_client.get_guild.return_value = mock_guild
 
         # Mock user info
-        mock_user = {"id": "user123", "username": "testuser", "global_name": "Test User"}
+        mock_user = {
+            "id": "user123",
+            "username": "testuser",
+            "global_name": "Test User",
+        }
         mock_discord_client.get_user.return_value = mock_user
 
         # Mock ban check (user is already banned)
@@ -2131,7 +2222,10 @@ class TestDiscordService:
 
         result = await discord_service.ban_user("guild123", "user123", "Test reason")
 
-        assert "❌ Error: User `Test User` (`user123`) is already banned from Test Guild" in result
+        assert (
+            "❌ Error: User `Test User` (`user123`) is already banned from Test Guild"
+            in result
+        )
 
 
 class TestDiscordServiceHelperMethods:
@@ -2175,7 +2269,9 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_guild.return_value = expected_guild
 
         # Execute
-        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+        guild_data, error_message = (
+            await discord_service._get_guild_with_error_handling(guild_id)
+        )
 
         # Verify
         assert guild_data == expected_guild
@@ -2193,11 +2289,16 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Not Found", 404)
 
         # Execute
-        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+        guild_data, error_message = (
+            await discord_service._get_guild_with_error_handling(guild_id)
+        )
 
         # Verify
         assert guild_data is None
-        assert error_message == f"Guild with ID `{guild_id}` was not found or bot has no access."
+        assert (
+            error_message
+            == f"Guild with ID `{guild_id}` was not found or bot has no access."
+        )
         mock_discord_client.get_guild.assert_called_once_with(guild_id)
         mock_logger.warning.assert_called_once()
 
@@ -2211,11 +2312,16 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Forbidden", 403)
 
         # Execute
-        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+        guild_data, error_message = (
+            await discord_service._get_guild_with_error_handling(guild_id)
+        )
 
         # Verify
         assert guild_data is None
-        assert error_message == f"Bot does not have permission to access guild `{guild_id}`."
+        assert (
+            error_message
+            == f"Bot does not have permission to access guild `{guild_id}`."
+        )
         mock_discord_client.get_guild.assert_called_once_with(guild_id)
         mock_logger.warning.assert_called_once()
 
@@ -2229,7 +2335,9 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_guild.side_effect = DiscordAPIError("Server Error", 500)
 
         # Execute
-        guild_data, error_message = await discord_service._get_guild_with_error_handling(guild_id)
+        guild_data, error_message = (
+            await discord_service._get_guild_with_error_handling(guild_id)
+        )
 
         # Verify
         assert guild_data is None
@@ -2248,7 +2356,9 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_user.return_value = expected_user
 
         # Execute
-        user_data, error_message = await discord_service._get_user_with_error_handling(user_id)
+        user_data, error_message = await discord_service._get_user_with_error_handling(
+            user_id
+        )
 
         # Verify
         assert user_data == expected_user
@@ -2266,7 +2376,9 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_user.side_effect = DiscordAPIError("Not Found", 404)
 
         # Execute
-        user_data, error_message = await discord_service._get_user_with_error_handling(user_id)
+        user_data, error_message = await discord_service._get_user_with_error_handling(
+            user_id
+        )
 
         # Verify
         assert user_data is None
@@ -2284,7 +2396,9 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_user.side_effect = DiscordAPIError("Server Error", 500)
 
         # Execute
-        user_data, error_message = await discord_service._get_user_with_error_handling(user_id)
+        user_data, error_message = await discord_service._get_user_with_error_handling(
+            user_id
+        )
 
         # Verify
         assert user_data is None
@@ -2303,7 +2417,9 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_channel.return_value = expected_channel
 
         # Execute
-        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+        channel_data, error_message = (
+            await discord_service._get_channel_with_error_handling(channel_id)
+        )
 
         # Verify
         assert channel_data == expected_channel
@@ -2321,11 +2437,16 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_channel.side_effect = DiscordAPIError("Not Found", 404)
 
         # Execute
-        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+        channel_data, error_message = (
+            await discord_service._get_channel_with_error_handling(channel_id)
+        )
 
         # Verify
         assert channel_data is None
-        assert error_message == f"Channel with ID `{channel_id}` was not found or bot has no access."
+        assert (
+            error_message
+            == f"Channel with ID `{channel_id}` was not found or bot has no access."
+        )
         mock_discord_client.get_channel.assert_called_once_with(channel_id)
         mock_logger.warning.assert_called_once()
 
@@ -2339,11 +2460,16 @@ class TestDiscordServiceHelperMethods:
         mock_discord_client.get_channel.side_effect = DiscordAPIError("Forbidden", 403)
 
         # Execute
-        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+        channel_data, error_message = (
+            await discord_service._get_channel_with_error_handling(channel_id)
+        )
 
         # Verify
         assert channel_data is None
-        assert error_message == f"Bot does not have permission to access channel `{channel_id}`."
+        assert (
+            error_message
+            == f"Bot does not have permission to access channel `{channel_id}`."
+        )
         mock_discord_client.get_channel.assert_called_once_with(channel_id)
         mock_logger.warning.assert_called_once()
 
@@ -2354,10 +2480,14 @@ class TestDiscordServiceHelperMethods:
         """Test channel retrieval with other Discord API errors."""
         # Setup
         channel_id = "123456789012345678"
-        mock_discord_client.get_channel.side_effect = DiscordAPIError("Server Error", 500)
+        mock_discord_client.get_channel.side_effect = DiscordAPIError(
+            "Server Error", 500
+        )
 
         # Execute
-        channel_data, error_message = await discord_service._get_channel_with_error_handling(channel_id)
+        channel_data, error_message = (
+            await discord_service._get_channel_with_error_handling(channel_id)
+        )
 
         # Verify
         assert channel_data is None
@@ -2376,12 +2506,14 @@ class TestDiscordServiceHelperMethods:
         expected_member = {
             "user": {"id": user_id, "username": "testuser"},
             "roles": ["role1", "role2"],
-            "joined_at": "2023-01-01T00:00:00Z"
+            "joined_at": "2023-01-01T00:00:00Z",
         }
         mock_discord_client.get_guild_member.return_value = expected_member
 
         # Execute
-        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+        member_data, error_message = (
+            await discord_service._get_member_with_error_handling(guild_id, user_id)
+        )
 
         # Verify
         assert member_data == expected_member
@@ -2397,14 +2529,20 @@ class TestDiscordServiceHelperMethods:
         # Setup
         guild_id = "123456789012345678"
         user_id = "999999999999999999"
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Not Found", 404)
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Not Found", 404
+        )
 
         # Execute
-        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+        member_data, error_message = (
+            await discord_service._get_member_with_error_handling(guild_id, user_id)
+        )
 
         # Verify
         assert member_data is None
-        assert error_message == f"User `{user_id}` is not a member of guild `{guild_id}`."
+        assert (
+            error_message == f"User `{user_id}` is not a member of guild `{guild_id}`."
+        )
         mock_discord_client.get_guild_member.assert_called_once_with(guild_id, user_id)
         mock_logger.warning.assert_called_once()
 
@@ -2416,14 +2554,21 @@ class TestDiscordServiceHelperMethods:
         # Setup
         guild_id = "123456789012345678"
         user_id = "987654321098765432"
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Forbidden", 403)
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Forbidden", 403
+        )
 
         # Execute
-        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+        member_data, error_message = (
+            await discord_service._get_member_with_error_handling(guild_id, user_id)
+        )
 
         # Verify
         assert member_data is None
-        assert error_message == f"Bot does not have permission to access member information in guild `{guild_id}`."
+        assert (
+            error_message
+            == f"Bot does not have permission to access member information in guild `{guild_id}`."
+        )
         mock_discord_client.get_guild_member.assert_called_once_with(guild_id, user_id)
         mock_logger.warning.assert_called_once()
 
@@ -2435,10 +2580,14 @@ class TestDiscordServiceHelperMethods:
         # Setup
         guild_id = "123456789012345678"
         user_id = "987654321098765432"
-        mock_discord_client.get_guild_member.side_effect = DiscordAPIError("Server Error", 500)
+        mock_discord_client.get_guild_member.side_effect = DiscordAPIError(
+            "Server Error", 500
+        )
 
         # Execute
-        member_data, error_message = await discord_service._get_member_with_error_handling(guild_id, user_id)
+        member_data, error_message = (
+            await discord_service._get_member_with_error_handling(guild_id, user_id)
+        )
 
         # Verify
         assert member_data is None
@@ -2463,7 +2612,7 @@ class TestDiscordServiceFormattingUtilities:
         details = {
             "message_id": "123456789012345678",
             "channel": "#general",
-            "content": "Hello world!"
+            "content": "Hello world!",
         }
 
         result = discord_service._format_success_response(action, details)
@@ -2477,10 +2626,7 @@ class TestDiscordServiceFormattingUtilities:
         """Test success response formatting with content truncation."""
         action = "Message sent"
         long_content = "A" * 150  # Content longer than 100 characters
-        details = {
-            "message_id": "123456789012345678",
-            "content": long_content
-        }
+        details = {"message_id": "123456789012345678", "content": long_content}
 
         result = discord_service._format_success_response(action, details)
 
@@ -2495,7 +2641,7 @@ class TestDiscordServiceFormattingUtilities:
         details = {
             "user_id": "123456789012345678",
             "reason": None,  # None value should be skipped
-            "guild": "Test Guild"
+            "guild": "Test Guild",
         }
 
         result = discord_service._format_success_response(action, details)
@@ -2521,7 +2667,7 @@ class TestDiscordServiceFormattingUtilities:
             "user_id": "123456789012345678",
             "guild_id": "987654321098765432",
             "id": "555555555555555555",
-            "regular_field": "not an id"
+            "regular_field": "not an id",
         }
 
         result = discord_service._format_success_response(action, details)
@@ -2534,14 +2680,16 @@ class TestDiscordServiceFormattingUtilities:
     # ContentFormatter Integration Error Handling Tests
 
     @pytest.mark.asyncio
-    async def test_get_guilds_formatted_with_malformed_guild_data(self, discord_service):
+    async def test_get_guilds_formatted_with_malformed_guild_data(
+        self, discord_service
+    ):
         """Test get_guilds_formatted handles malformed guild data gracefully."""
         # Mock Discord client to return malformed guild data
         malformed_guilds = [
             {"id": None, "name": None},  # None values
-            {"id": "", "name": ""},      # Empty strings
-            {"id": 123, "name": 456},    # Wrong types
-            {},                          # Empty dict
+            {"id": "", "name": ""},  # Empty strings
+            {"id": 123, "name": 456},  # Wrong types
+            {},  # Empty dict
         ]
         discord_service._discord_client.get_user_guilds.return_value = malformed_guilds
 
@@ -2553,16 +2701,18 @@ class TestDiscordServiceFormattingUtilities:
         assert len(result) > 0
 
     @pytest.mark.asyncio
-    async def test_get_channels_formatted_with_malformed_channel_data(self, discord_service):
+    async def test_get_channels_formatted_with_malformed_channel_data(
+        self, discord_service
+    ):
         """Test get_channels_formatted handles malformed channel data gracefully."""
         guild_id = "123456789012345678"
-        
+
         # Mock guild lookup
         discord_service._discord_client.get_guild.return_value = {
             "id": guild_id,
-            "name": "Test Guild"
+            "name": "Test Guild",
         }
-        
+
         # Mock malformed channel data
         malformed_channels = [
             {"id": None, "name": None, "type": None},
@@ -2570,7 +2720,9 @@ class TestDiscordServiceFormattingUtilities:
             {"id": 123, "name": 456, "type": 789},
             {},
         ]
-        discord_service._discord_client.get_guild_channels.return_value = malformed_channels
+        discord_service._discord_client.get_guild_channels.return_value = (
+            malformed_channels
+        )
 
         result = await discord_service.get_channels_formatted(guild_id)
 
@@ -2580,16 +2732,18 @@ class TestDiscordServiceFormattingUtilities:
         assert len(result) > 0
 
     @pytest.mark.asyncio
-    async def test_get_messages_formatted_with_malformed_message_data(self, discord_service):
+    async def test_get_messages_formatted_with_malformed_message_data(
+        self, discord_service
+    ):
         """Test get_messages_formatted handles malformed message data gracefully."""
         channel_id = "123456789012345678"
-        
+
         # Mock channel lookup
         discord_service._discord_client.get_channel.return_value = {
             "id": channel_id,
-            "name": "test-channel"
+            "name": "test-channel",
         }
-        
+
         # Mock malformed message data
         malformed_messages = [
             {"id": None, "content": None, "author": None, "timestamp": None},
@@ -2597,7 +2751,9 @@ class TestDiscordServiceFormattingUtilities:
             {"id": 123, "content": 456, "author": "invalid", "timestamp": 789},
             {},
         ]
-        discord_service._discord_client.get_channel_messages.return_value = malformed_messages
+        discord_service._discord_client.get_channel_messages.return_value = (
+            malformed_messages
+        )
 
         result = await discord_service.get_messages_formatted(channel_id)
 
@@ -2607,10 +2763,12 @@ class TestDiscordServiceFormattingUtilities:
         assert len(result) > 0
 
     @pytest.mark.asyncio
-    async def test_get_user_info_formatted_with_malformed_user_data(self, discord_service):
+    async def test_get_user_info_formatted_with_malformed_user_data(
+        self, discord_service
+    ):
         """Test get_user_info_formatted handles malformed user data gracefully."""
         user_id = "123456789012345678"
-        
+
         # Mock malformed user data
         malformed_user = {
             "id": None,
@@ -2629,99 +2787,114 @@ class TestDiscordServiceFormattingUtilities:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_content_formatter_integration_with_none_formatter(self, mock_discord_client, mock_settings, mock_logger):
+    def test_content_formatter_integration_with_none_formatter(
+        self, mock_discord_client, mock_settings, mock_logger
+    ):
         """Test DiscordService creates ContentFormatter when none provided."""
         # Create service without providing ContentFormatter
         service = DiscordService(mock_discord_client, mock_settings, mock_logger)
-        
+
         # Should have created a ContentFormatter instance
-        assert hasattr(service, '_content_formatter')
+        assert hasattr(service, "_content_formatter")
         assert service._content_formatter is not None
-        
+
         # Should be able to use formatting methods
         result = service._content_formatter.format_guild_info([])
         assert isinstance(result, str)
         assert "# Discord Guilds" in result
 
-    def test_content_formatter_integration_with_custom_formatter(self, mock_discord_client, mock_settings, mock_logger):
+    def test_content_formatter_integration_with_custom_formatter(
+        self, mock_discord_client, mock_settings, mock_logger
+    ):
         """Test DiscordService uses provided ContentFormatter instance."""
         from unittest.mock import Mock
         from src.discord_mcp.services.content_formatter import ContentFormatter
-        
+
         # Create custom ContentFormatter mock
         custom_formatter = Mock(spec=ContentFormatter)
         custom_formatter.format_guild_info.return_value = "Custom formatted guilds"
-        
+
         # Create service with custom formatter
-        service = DiscordService(mock_discord_client, mock_settings, mock_logger, custom_formatter)
-        
+        service = DiscordService(
+            mock_discord_client, mock_settings, mock_logger, custom_formatter
+        )
+
         # Should use the provided formatter
         assert service._content_formatter is custom_formatter
-        
+
         # Test that it uses the custom formatter
         result = service._content_formatter.format_guild_info([])
         assert result == "Custom formatted guilds"
         custom_formatter.format_guild_info.assert_called_once_with([])
 
     @pytest.mark.asyncio
-    async def test_send_message_with_content_formatter_error_handling(self, discord_service):
+    async def test_send_message_with_content_formatter_error_handling(
+        self, discord_service
+    ):
         """Test send_message handles ContentFormatter errors gracefully."""
         channel_id = "123456789012345678"
         content = "Test message"
-        
+
         # Mock successful channel lookup
         discord_service._discord_client.get_channel.return_value = {
             "id": channel_id,
-            "name": "test-channel"
+            "name": "test-channel",
         }
-        
+
         # Mock successful message sending
         discord_service._discord_client.create_message.return_value = {
             "id": "message123",
-            "timestamp": "2023-01-01T12:00:00Z"
+            "timestamp": "2023-01-01T12:00:00Z",
         }
-        
+
         # Mock ContentFormatter to raise an exception during truncation
         from unittest.mock import Mock
-        discord_service._content_formatter.truncate_content = Mock(side_effect=Exception("Formatter error"))
-        
+
+        discord_service._content_formatter.truncate_content = Mock(
+            side_effect=Exception("Formatter error")
+        )
+
         # Should handle the error gracefully and still send the message
         result = await discord_service.send_message(channel_id, content)
-        
+
         # Should still succeed (the error in formatting shouldn't break the core functionality)
         assert "✅ Message sent successfully" in result or "❌ Error" in result
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_direct_message_with_content_formatter_error_handling(self, discord_service):
+    async def test_direct_message_with_content_formatter_error_handling(
+        self, discord_service
+    ):
         """Test send_direct_message handles ContentFormatter errors gracefully."""
         user_id = "123456789012345678"
         content = "Test DM"
-        
+
         # Mock successful user lookup
         discord_service._discord_client.get_user.return_value = {
             "id": user_id,
             "username": "testuser",
-            "bot": False
+            "bot": False,
         }
-        
+
         # Mock successful DM channel creation and message sending
         discord_service._discord_client.create_dm_channel.return_value = {
             "id": "dm_channel_123"
         }
         discord_service._discord_client.create_message.return_value = {
             "id": "dm_message_123",
-            "timestamp": "2023-01-01T12:00:00Z"
+            "timestamp": "2023-01-01T12:00:00Z",
         }
-        
+
         # Mock ContentFormatter to raise an exception
         from unittest.mock import Mock
-        discord_service._content_formatter.format_user_display_name = Mock(side_effect=Exception("Formatter error"))
-        
+
+        discord_service._content_formatter.format_user_display_name = Mock(
+            side_effect=Exception("Formatter error")
+        )
+
         # Should handle the error gracefully
         result = await discord_service.send_direct_message(user_id, content)
-        
+
         # Should still succeed or fail gracefully
         assert isinstance(result, str)
         assert len(result) > 0
-
