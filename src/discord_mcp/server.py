@@ -69,7 +69,9 @@ class DiscordMCPServer:
         logging.basicConfig(level=getattr(logging, log_level))
 
         logger.info(
-            "Logging configured", level=log_level, format=self.settings.log_format
+            "Logging configured",
+            level=log_level,
+            format=self.settings.log_format,
         )
 
     def _create_mcp_server(self) -> FastMCP:
@@ -191,7 +193,10 @@ The server is connected and ready to process Discord operations.
         mcp_server.run(transport="stdio")
 
     def run_sse(
-        self, host: str = "127.0.0.1", port: int = 8000, mount_path: str = "/sse"
+        self,
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        mount_path: str = "/sse",
     ) -> None:
         """Run the server with SSE transport (local HTTP server)."""
         mcp_server = self._create_mcp_server()

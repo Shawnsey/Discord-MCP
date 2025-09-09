@@ -57,7 +57,9 @@ class DiscordConfig(BaseSettings):
             return None
         if isinstance(v, str):
             return [
-                channel_id.strip() for channel_id in v.split(",") if channel_id.strip()
+                channel_id.strip()
+                for channel_id in v.split(",")
+                if channel_id.strip()
             ]
         return v
 
@@ -80,7 +82,10 @@ class RateLimitConfig(BaseSettings):
         le=50,  # Discord's rate limit is typically 50 requests per second
     )
     burst_size: int = Field(
-        default=10, description="Maximum burst size for rate limiting", gt=0, le=100
+        default=10,
+        description="Maximum burst size for rate limiting",
+        gt=0,
+        le=100,
     )
 
     model_config = {"env_prefix": "RATE_LIMIT_"}
@@ -132,10 +137,16 @@ class Settings(BaseSettings):
     """Main application settings."""
 
     # Discord configuration
-    discord_bot_token: str = Field(...,
-                                   description="Discord bot token", min_length=50)
+    discord_bot_token: str = Field(
+        ...,
+        description="Discord bot token",
+        min_length=50,
+    )
     discord_application_id: str = Field(
-        ..., description="Discord application ID", min_length=17, max_length=19
+        ...,
+        description="Discord application ID",
+        min_length=17,
+        max_length=19,
     )
     allowed_guilds: Optional[str] = Field(
         default=None, description="Comma-separated list of allowed guild IDs"
@@ -152,7 +163,10 @@ class Settings(BaseSettings):
         le=50,
     )
     rate_limit_burst_size: int = Field(
-        default=10, description="Maximum burst size for rate limiting", gt=0, le=100
+        default=10,
+        description="Maximum burst size for rate limiting",
+        gt=0,
+        le=100,
     )
 
     # Logging

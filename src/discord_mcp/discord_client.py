@@ -58,7 +58,8 @@ class RateLimiter:
             # Add tokens based on time elapsed
             elapsed = now - self.last_update
             self.tokens = min(
-                self.burst_size, self.tokens + elapsed * self.requests_per_second
+                self.burst_size,
+                self.tokens + elapsed * self.requests_per_second,
             )
             self.last_update = now
 
@@ -82,7 +83,8 @@ class DiscordClient:
         self.settings = settings
         self.session: Optional[ClientSession] = None
         self.rate_limiter = RateLimiter(
-            settings.rate_limit_requests_per_second, settings.rate_limit_burst_size
+            settings.rate_limit_requests_per_second,
+            settings.rate_limit_burst_size,
         )
 
         # Headers for all requests
