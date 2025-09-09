@@ -17,7 +17,7 @@ from mcp.server.fastmcp import FastMCP
 from .config import Settings, get_settings
 from .discord_client import DiscordClient
 from .resources import register_resources
-from .services import DiscordService, IDiscordService
+from .services import DiscordService
 from .tools import register_tools
 
 logger = structlog.get_logger(__name__)
@@ -69,7 +69,9 @@ class DiscordMCPServer:
         logging.basicConfig(level=getattr(logging, log_level))
 
         logger.info(
-            "Logging configured", level=log_level, format=self.settings.log_format
+            "Logging configured",
+            level=log_level,
+            format=self.settings.log_format,
         )
 
     def _create_mcp_server(self) -> FastMCP:
@@ -78,7 +80,8 @@ class DiscordMCPServer:
             return self.mcp_server
 
         @asynccontextmanager
-        async def discord_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
+        async def discord_lifespan(
+                server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
             """Manage Discord client lifecycle and service registration."""
             logger.info(
                 "Starting Discord MCP Server",
@@ -190,7 +193,10 @@ The server is connected and ready to process Discord operations.
         mcp_server.run(transport="stdio")
 
     def run_sse(
-        self, host: str = "127.0.0.1", port: int = 8000, mount_path: str = "/sse"
+        self,
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        mount_path: str = "/sse",
     ) -> None:
         """Run the server with SSE transport (local HTTP server)."""
         mcp_server = self._create_mcp_server()
@@ -200,7 +206,8 @@ The server is connected and ready to process Discord operations.
             port=port,
             mount_path=mount_path,
         )
-        mcp_server.run(transport="sse", host=host, port=port, mount_path=mount_path)
+        mcp_server.run(transport="sse", host=host,
+                       port=port, mount_path=mount_path)
 
     def setup_signal_handlers(self) -> None:
         """Set up signal handlers for graceful shutdown."""

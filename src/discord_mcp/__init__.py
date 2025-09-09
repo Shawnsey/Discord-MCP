@@ -2,7 +2,8 @@
 Discord MCP Server
 
 A Model Context Protocol (MCP) server for Discord integration.
-Enables AI assistants to interact with Discord servers through reading channels,
+Enables AI assistants to interact with Discord servers through reading
+channels,
 sending messages, and managing direct messages.
 """
 

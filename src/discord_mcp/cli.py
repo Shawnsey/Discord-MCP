@@ -1,11 +1,9 @@
 """Command line interface for the Discord MCP server."""
 
 import argparse
-import asyncio
 import logging
 import signal
 import sys
-from typing import Optional
 
 import structlog
 
@@ -48,16 +46,19 @@ def setup_logging(log_level: str = "INFO", log_format: str = "text") -> None:
 def create_parser() -> argparse.ArgumentParser:
     """Create command line argument parser."""
     parser = argparse.ArgumentParser(
-        description="Discord MCP Server - Model Context Protocol server for Discord integration",
+        description=(
+            "Discord MCP Server - Model Context Protocol server for "
+            "Discord integration"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Run with stdio transport (for MCP clients)
   python -m discord_mcp --transport stdio
-  
+
   # Run with SSE transport (local HTTP server)
   python -m discord_mcp --transport sse --host 0.0.0.0 --port 8000
-  
+
   # Run with debug logging
   python -m discord_mcp --log-level DEBUG --transport sse
         """,
@@ -107,7 +108,10 @@ Examples:
 
 
 async def run_server(
-    transport: str, host: str = "127.0.0.1", port: int = 8000, mount_path: str = "/sse"
+    transport: str,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    mount_path: str = "/sse",
 ) -> None:
     """Run the Discord MCP server with specified transport."""
     logger = structlog.get_logger(__name__)
@@ -117,7 +121,9 @@ async def run_server(
         server = DiscordMCPServer(settings)
 
         if transport == "stdio":
-            logger.info("Starting Discord MCP server with stdio transport")
+            logger.info(
+                "Starting Discord MCP server with stdio transport"
+            )
             server.run_stdio()  # This will handle the asyncio loop
         elif transport == "sse":
             logger.info(
@@ -158,14 +164,17 @@ def main() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    # Run the server - don't use asyncio.run() since FastMCP handles the event loop
+    # Run the server - don't use asyncio.run() since FastMCP handles the event
+    # loop
     try:
         # Create settings and server
         settings = get_settings()
         server = DiscordMCPServer(settings)
 
         if args.transport == "stdio":
-            logger.info("Starting Discord MCP server with stdio transport")
+            logger.info(
+                "Starting Discord MCP server with stdio transport"
+            )
             server.run_stdio()
         elif args.transport == "sse":
             logger.info(
@@ -174,7 +183,9 @@ def main() -> None:
                 port=args.port,
                 mount_path=args.mount_path,
             )
-            server.run_sse(host=args.host, port=args.port, mount_path=args.mount_path)
+            server.run_sse(
+                host=args.host, port=args.port, mount_path=args.mount_path
+            )
         else:
             raise ValueError(f"Unsupported transport: {args.transport}")
 

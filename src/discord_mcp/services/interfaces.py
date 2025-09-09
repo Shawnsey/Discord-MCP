@@ -41,7 +41,8 @@ class IDiscordService(ABC):
         pass
 
     @abstractmethod
-    async def get_messages_formatted(self, channel_id: str, limit: int = 50) -> str:
+    async def get_messages_formatted(
+            self, channel_id: str, limit: int = 50) -> str:
         """
         Get a formatted list of recent messages from a Discord channel.
 
@@ -145,7 +146,11 @@ class IDiscordService(ABC):
 
     @abstractmethod
     async def timeout_user(
-        self, guild_id: str, user_id: str, duration_minutes: int, reason: Optional[str] = None
+        self,
+        guild_id: str,
+        user_id: str,
+        duration_minutes: int,
+        reason: Optional[str] = None,
     ) -> str:
         """
         Timeout a user in a Discord server for a specified duration.
@@ -197,7 +202,11 @@ class IDiscordService(ABC):
 
     @abstractmethod
     async def ban_user(
-        self, guild_id: str, user_id: str, reason: Optional[str] = None, delete_message_days: int = 0
+        self,
+        guild_id: str,
+        user_id: str,
+        reason: Optional[str] = None,
+        delete_message_days: int = 0,
     ) -> str:
         """
         Ban a user from a Discord server with optional message deletion.

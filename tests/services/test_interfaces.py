@@ -235,9 +235,7 @@ class TestAbstractBaseClassBehavior:
             ) -> str:
                 return "test"
 
-            async def kick_user(
-                self, guild_id: str, user_id: str, reason=None
-            ) -> str:
+            async def kick_user(self, guild_id: str, user_id: str, reason=None) -> str:
                 return "test"
 
             async def ban_user(
