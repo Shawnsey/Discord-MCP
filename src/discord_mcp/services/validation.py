@@ -92,7 +92,8 @@ class ValidationResult:
     error_type: Optional[ValidationErrorType] = None
 
     @classmethod
-    def success(cls, data: Optional[Dict[str, Any]] = None) -> "ValidationResult":
+    def success(cls, data: Optional[Dict[str, Any]]
+                = None) -> "ValidationResult":
         """Create a successful validation result."""
         return cls(is_valid=True, data=data)
 
@@ -163,7 +164,8 @@ class BaseValidator:
         return ValidationResult.error(message, error_type)
 
     @staticmethod
-    def _create_success(data: Optional[Dict[str, Any]] = None) -> ValidationResult:
+    def _create_success(
+            data: Optional[Dict[str, Any]] = None) -> ValidationResult:
         """Helper method to create success results."""
         return ValidationResult.success(data)
 
@@ -218,7 +220,8 @@ class StringValidator(BaseValidator):
 
         if len(content) > max_length:
             return cls._create_error(
-                f"{field_name} is too long ({len(content)} characters). Maximum allowed is {max_length} characters",
+                f"{field_name} is too long ({
+                    len(content)} characters). Maximum allowed is {max_length} characters",
                 ValidationErrorType.CONTENT_TOO_LONG,
             )
 
@@ -277,7 +280,8 @@ class DiscordValidator(BaseValidator):
     """Validator for Discord-specific formats and constraints."""
 
     @classmethod
-    def validate_id(cls, discord_id: str, resource_type: str) -> ValidationResult:
+    def validate_id(cls, discord_id: str,
+                    resource_type: str) -> ValidationResult:
         """
         Validate Discord ID format (snowflake).
 
@@ -312,7 +316,9 @@ class DiscordValidator(BaseValidator):
             or len(discord_id) > ValidationConstants.DISCORD_ID_MAX_LENGTH
         ):
             return cls._create_error(
-                f"Invalid {resource_type} ID length. Discord IDs should be {ValidationConstants.DISCORD_ID_MIN_LENGTH}-{ValidationConstants.DISCORD_ID_MAX_LENGTH} digits",
+                f"Invalid {resource_type} ID length. Discord IDs should be {
+                    ValidationConstants.DISCORD_ID_MIN_LENGTH}-{
+                    ValidationConstants.DISCORD_ID_MAX_LENGTH} digits",
                 ValidationErrorType.INVALID_INPUT,
             )
 
@@ -330,7 +336,8 @@ class ValidationMixin:
     # Error message formatting constants
     ERROR_PREFIX = "❌ Error"
 
-    def _format_error_message(self, message: str, include_prefix: bool = True) -> str:
+    def _format_error_message(self, message: str,
+                              include_prefix: bool = True) -> str:
         """Format error messages consistently."""
         if include_prefix and not message.startswith(self.ERROR_PREFIX):
             return f"{self.ERROR_PREFIX}: {message}"
@@ -357,7 +364,8 @@ class ValidationMixin:
         max_value: Optional[Union[int, float]] = None,
     ) -> ValidationResult:
         """Delegate to NumericValidator for consistency."""
-        return NumericValidator.validate_range(value, field_name, min_value, max_value)
+        return NumericValidator.validate_range(
+            value, field_name, min_value, max_value)
 
     def _validate_discord_id(
         self, discord_id: str, resource_type: str
@@ -383,7 +391,8 @@ class ValidationMixin:
             allow_empty=False,
         )
 
-    def _validate_message_content_for_editing(self, content: str) -> ValidationResult:
+    def _validate_message_content_for_editing(
+            self, content: str) -> ValidationResult:
         """
         Validate Discord message content for editing operations.
 
@@ -401,7 +410,8 @@ class ValidationMixin:
             allow_empty=False,
         )
 
-    def _validate_message_content_for_dm(self, content: str) -> ValidationResult:
+    def _validate_message_content_for_dm(
+            self, content: str) -> ValidationResult:
         """
         Validate Discord message content for direct message operations.
 
@@ -457,7 +467,8 @@ class ValidationMixin:
                 suggestions = f"Please provide a non-empty {operation_type} content."
         elif validation_result.error_type == ValidationErrorType.CONTENT_TOO_LONG:
             if not suggestions:
-                suggestions = f"Discord limit is {ValidationConstants.MESSAGE_MAX_LENGTH} characters. Please shorten your {operation_type}."
+                suggestions = f"Discord limit is {
+                    ValidationConstants.MESSAGE_MAX_LENGTH} characters. Please shorten your {operation_type}."
 
         if suggestions:
             error_message += f"\n\n**Suggestion**: {suggestions}"
@@ -505,7 +516,8 @@ class ValidationMixin:
 
         return (
             f"❌ Error: {operation_display} content too long ({content_length} characters). "
-            f"Discord limit is {ValidationConstants.MESSAGE_MAX_LENGTH} characters."
+            f"Discord limit is {
+                ValidationConstants.MESSAGE_MAX_LENGTH} characters."
         )
 
     def _validate_and_format_message_content_error(
@@ -526,7 +538,8 @@ class ValidationMixin:
         """
         # Choose appropriate validation method based on operation type
         if operation_type == "edit":
-            validation_result = self._validate_message_content_for_editing(content)
+            validation_result = self._validate_message_content_for_editing(
+                content)
         elif operation_type == "dm":
             validation_result = self._validate_message_content_for_dm(content)
         else:
@@ -539,7 +552,8 @@ class ValidationMixin:
             validation_result, operation_type
         )
 
-    def _validate_timeout_duration(self, duration_minutes: int) -> ValidationResult:
+    def _validate_timeout_duration(
+            self, duration_minutes: int) -> ValidationResult:
         """
         Validate timeout duration for Discord moderation.
 
@@ -664,7 +678,8 @@ class ValidationMixin:
         Returns:
             ValidationResult: Formatted not found result
         """
-        message = f"❌ Error: {resource_type.title()} `{resource_id}` was not found or bot has no access."
+        message = f"❌ Error: {
+            resource_type.title()} `{resource_id}` was not found or bot has no access."
         if additional_info:
             message += f" {additional_info}"
 
@@ -736,7 +751,8 @@ class ValidationMixin:
         # Validate Discord ID formats
         guild_id_validation = self._validate_discord_id(guild_id, "guild")
         if not guild_id_validation.is_valid:
-            return self._format_error_message(guild_id_validation.error_message)
+            return self._format_error_message(
+                guild_id_validation.error_message)
 
         user_id_validation = self._validate_discord_id(user_id, "user")
         if not user_id_validation.is_valid:
@@ -920,7 +936,8 @@ class ValidationMixin:
         role_map = {role["id"]: role for role in guild_roles}
 
         # Get highest roles for both users
-        bot_role_info = self._get_highest_role(bot_member.get("roles", []), role_map)
+        bot_role_info = self._get_highest_role(
+            bot_member.get("roles", []), role_map)
         target_role_info = self._get_highest_role(
             target_member.get("roles", []), role_map
         )
@@ -960,8 +977,12 @@ class ValidationMixin:
         """Create a formatted hierarchy error message."""
         return (
             f"❌ Error: Cannot moderate `{target_username}` due to role hierarchy restrictions.\n"
-            f"- **Bot's highest role**: {bot_role_info['name']} (position {bot_role_info['position']})\n"
-            f"- **Target user's highest role**: {target_role_info['name']} (position {target_role_info['position']})\n"
+            f"- **Bot's highest role**: {
+                bot_role_info['name']} (position {
+                bot_role_info['position']})\n"
+            f"- **Target user's highest role**: {
+                target_role_info['name']} (position {
+                target_role_info['position']})\n"
             f"- **Note**: Bot's role must be higher than target user's role to perform moderation actions."
         )
 

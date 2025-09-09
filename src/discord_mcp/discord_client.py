@@ -150,13 +150,15 @@ class DiscordClient:
                 error=error_message,
                 response_data=response_data,
             )
-            raise DiscordAPIError(error_message, response.status, response_data)
+            raise DiscordAPIError(
+                error_message, response.status, response_data)
 
         # Handle server errors
         if response.status >= 500:
             error_message = f"Discord API server error: {response.status}"
             logger.error("Discord API server error", status=response.status)
-            raise DiscordAPIError(error_message, response.status, response_data)
+            raise DiscordAPIError(
+                error_message, response.status, response_data)
 
         return response_data
 
@@ -362,7 +364,8 @@ class DiscordClient:
 
     # Moderation API methods
 
-    async def get_guild_member(self, guild_id: str, user_id: str) -> Dict[str, Any]:
+    async def get_guild_member(
+            self, guild_id: str, user_id: str) -> Dict[str, Any]:
         """Get guild member information."""
         return await self.get(f"/guilds/{guild_id}/members/{user_id}")
 

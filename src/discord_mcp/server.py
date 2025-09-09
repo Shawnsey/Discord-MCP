@@ -78,7 +78,8 @@ class DiscordMCPServer:
             return self.mcp_server
 
         @asynccontextmanager
-        async def discord_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
+        async def discord_lifespan(
+                server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
             """Manage Discord client lifecycle and service registration."""
             logger.info(
                 "Starting Discord MCP Server",
@@ -200,7 +201,8 @@ The server is connected and ready to process Discord operations.
             port=port,
             mount_path=mount_path,
         )
-        mcp_server.run(transport="sse", host=host, port=port, mount_path=mount_path)
+        mcp_server.run(transport="sse", host=host,
+                       port=port, mount_path=mount_path)
 
     def setup_signal_handlers(self) -> None:
         """Set up signal handlers for graceful shutdown."""

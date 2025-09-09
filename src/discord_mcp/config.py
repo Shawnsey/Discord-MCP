@@ -1,8 +1,8 @@
 """
 Configuration management for Discord MCP Server.
 
-This module handles loading and validating configuration from environment variables
-using Pydantic settings for type safety and validation.
+This module handles loading and validating configuration from environment
+variables using Pydantic settings for type safety and validation.
 """
 
 from typing import List, Optional, Set
@@ -45,7 +45,8 @@ class DiscordConfig(BaseSettings):
         if v is None or v == "":
             return None
         if isinstance(v, str):
-            return [guild_id.strip() for guild_id in v.split(",") if guild_id.strip()]
+            return [guild_id.strip()
+                    for guild_id in v.split(",") if guild_id.strip()]
         return v
 
     @field_validator("allowed_channels", mode="before")
@@ -89,7 +90,8 @@ class LoggingConfig(BaseSettings):
     """Logging configuration."""
 
     level: str = Field(default="INFO", description="Logging level")
-    format: str = Field(default="json", description="Logging format (json or text)")
+    format: str = Field(
+        default="json", description="Logging format (json or text)")
 
     @field_validator("level")
     @classmethod
@@ -97,7 +99,8 @@ class LoggingConfig(BaseSettings):
         """Validate log level."""
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if v.upper() not in valid_levels:
-            raise ValueError(f"Invalid log level: {v}. Must be one of {valid_levels}")
+            raise ValueError(
+                f"Invalid log level: {v}. Must be one of {valid_levels}")
         return v.upper()
 
     @field_validator("format")
@@ -106,7 +109,8 @@ class LoggingConfig(BaseSettings):
         """Validate log format."""
         valid_formats = {"json", "text"}
         if v.lower() not in valid_formats:
-            raise ValueError(f"Invalid log format: {v}. Must be one of {valid_formats}")
+            raise ValueError(
+                f"Invalid log format: {v}. Must be one of {valid_formats}")
         return v.lower()
 
     model_config = {"env_prefix": "LOG_"}
@@ -118,7 +122,8 @@ class ServerConfig(BaseSettings):
     name: str = Field(default="Discord MCP Server", description="Server name")
     version: str = Field(default="0.1.0", description="Server version")
     debug: bool = Field(default=False, description="Enable debug mode")
-    development_mode: bool = Field(default=False, description="Enable development mode")
+    development_mode: bool = Field(
+        default=False, description="Enable development mode")
 
     model_config = {"env_prefix": "SERVER_"}
 
@@ -127,7 +132,8 @@ class Settings(BaseSettings):
     """Main application settings."""
 
     # Discord configuration
-    discord_bot_token: str = Field(..., description="Discord bot token", min_length=50)
+    discord_bot_token: str = Field(...,
+                                   description="Discord bot token", min_length=50)
     discord_application_id: str = Field(
         ..., description="Discord application ID", min_length=17, max_length=19
     )
@@ -151,13 +157,16 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
-    log_format: str = Field(default="json", description="Logging format (json or text)")
+    log_format: str = Field(
+        default="json", description="Logging format (json or text)")
 
     # Server
-    server_name: str = Field(default="Discord MCP Server", description="Server name")
+    server_name: str = Field(
+        default="Discord MCP Server", description="Server name")
     server_version: str = Field(default="0.1.0", description="Server version")
     debug: bool = Field(default=False, description="Enable debug mode")
-    development_mode: bool = Field(default=False, description="Enable development mode")
+    development_mode: bool = Field(
+        default=False, description="Enable development mode")
 
     model_config = {
         "env_file": ".env",
@@ -191,7 +200,8 @@ class Settings(BaseSettings):
         """Validate log level."""
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if v.upper() not in valid_levels:
-            raise ValueError(f"Invalid log level: {v}. Must be one of {valid_levels}")
+            raise ValueError(
+                f"Invalid log level: {v}. Must be one of {valid_levels}")
         return v.upper()
 
     @field_validator("log_format")
@@ -200,7 +210,8 @@ class Settings(BaseSettings):
         """Validate log format."""
         valid_formats = {"json", "text"}
         if v.lower() not in valid_formats:
-            raise ValueError(f"Invalid log format: {v}. Must be one of {valid_formats}")
+            raise ValueError(
+                f"Invalid log format: {v}. Must be one of {valid_formats}")
         return v.lower()
 
     def get_allowed_guilds_list(self) -> Optional[List[str]]:

@@ -154,7 +154,8 @@ def register_tools(server: FastMCP) -> None:
         return await discord_service.delete_message(channel_id, message_id)
 
     @server.tool()
-    async def edit_message(channel_id: str, message_id: str, new_content: str) -> str:
+    async def edit_message(channel_id: str, message_id: str,
+                           new_content: str) -> str:
         """
         Edit a message in a Discord channel (only works for bot's own messages).
 
@@ -255,7 +256,8 @@ def register_tools(server: FastMCP) -> None:
 
         return await discord_service.untimeout_user(guild_id, user_id, reason)
 
-    @server.tool(name="kick_user", description="Kick a user from a Discord server")
+    @server.tool(name="kick_user",
+                 description="Kick a user from a Discord server")
     async def kick_user(
         guild_id: str, user_id: str, reason: Optional[str] = None
     ) -> str:

@@ -92,7 +92,8 @@ class DiscordService(IDiscordService, ValidationMixin):
         self._discord_client = discord_client
         self._settings = settings
         self._logger = logger
-        self._content_formatter = content_formatter or ContentFormatter(settings)
+        self._content_formatter = content_formatter or ContentFormatter(
+            settings)
 
     async def get_guilds_formatted(self) -> str:
         """
@@ -123,7 +124,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             # Use centralized formatting method
             result = self._content_formatter.format_guild_info(guilds)
 
-            self._log_operation_success("guild list retrieval", guild_count=len(guilds))
+            self._log_operation_success(
+                "guild list retrieval", guild_count=len(guilds))
             return result
 
         except DiscordAPIError as e:
@@ -142,7 +144,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             str: Formatted markdown string containing channel information
         """
         try:
-            self._log_operation_start("channel list retrieval", guild_id=guild_id)
+            self._log_operation_start(
+                "channel list retrieval", guild_id=guild_id)
 
             # Use centralized permission validation
             permission_error = self._validate_permissions(guild_id=guild_id)
@@ -156,7 +159,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 if "was not found" in error_msg:
                     return self._create_not_found_response("Guild", guild_id)
                 elif "does not have permission" in error_msg:
-                    return self._create_permission_denied_response("guild", guild_id)
+                    return self._create_permission_denied_response(
+                        "guild", guild_id)
                 else:
                     return f"❌ Error: {error_msg}"
 
@@ -179,7 +183,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"# Channels in {guild_name}\n\nNo accessible channels found in this guild."
 
             # Use centralized formatting method
-            result = self._content_formatter.format_channel_info(channels, guild_name)
+            result = self._content_formatter.format_channel_info(
+                channels, guild_name)
 
             self._log_operation_success(
                 "channel list retrieval",
@@ -193,7 +198,8 @@ class DiscordService(IDiscordService, ValidationMixin):
         except Exception as e:
             return self._handle_unexpected_error(e, "fetching channels")
 
-    async def get_messages_formatted(self, channel_id: str, limit: int = 50) -> str:
+    async def get_messages_formatted(
+            self, channel_id: str, limit: int = 50) -> str:
         """
         Get a formatted list of recent messages from a Discord channel.
 
@@ -210,7 +216,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             )
 
             # Use centralized permission validation
-            permission_error = self._validate_permissions(channel_id=channel_id)
+            permission_error = self._validate_permissions(
+                channel_id=channel_id)
             if permission_error:
                 return permission_error
 
@@ -224,7 +231,8 @@ class DiscordService(IDiscordService, ValidationMixin):
 
             # Also check guild permission if it's a guild channel
             if guild_id:
-                guild_permission_error = self._validate_permissions(guild_id=guild_id)
+                guild_permission_error = self._validate_permissions(
+                    guild_id=guild_id)
                 if guild_permission_error:
                     return self._create_permission_denied_response(
                         "guild",
@@ -241,7 +249,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"# Messages in #{channel_name}\n\nNo messages found in this channel."
 
             # Use centralized message formatting method
-            result = self._content_formatter.format_message_info(messages, channel_name)
+            result = self._content_formatter.format_message_info(
+                messages, channel_name)
 
             self._log_operation_success(
                 "message retrieval",
@@ -317,7 +326,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return content_error
 
             # Use centralized permission validation
-            permission_error = self._validate_permissions(channel_id=channel_id)
+            permission_error = self._validate_permissions(
+                channel_id=channel_id)
             if permission_error:
                 return permission_error
 
@@ -331,7 +341,8 @@ class DiscordService(IDiscordService, ValidationMixin):
 
             # Also check guild permission if it's a guild channel
             if guild_id:
-                guild_permission_error = self._validate_permissions(guild_id=guild_id)
+                guild_permission_error = self._validate_permissions(
+                    guild_id=guild_id)
                 if guild_permission_error:
                     return self._create_permission_denied_response(
                         "guild",
@@ -362,7 +373,9 @@ class DiscordService(IDiscordService, ValidationMixin):
                 success_msg = f"✅ Message sent successfully to #{channel_name}!"
                 success_msg += f"\n- **Message ID**: `{message_id}`"
                 success_msg += f"\n- **Channel**: #{channel_name} (`{channel_id}`)"
-                success_msg += f"\n- **Content**: {self._content_formatter.truncate_content(content, 100)}"
+                success_msg += f"\n- **Content**: {
+                    self._content_formatter.truncate_content(
+                        content, 100)}"
                 if reply_to_message_id:
                     success_msg += f"\n- **Reply to**: `{reply_to_message_id}`"
                 if timestamp:
@@ -437,12 +450,21 @@ class DiscordService(IDiscordService, ValidationMixin):
                 timestamp = result.get("timestamp", "")
 
                 # Format success message to maintain backward compatibility
-                success_msg = f"✅ Direct message sent successfully to {user.get('username', 'Unknown User')}!"
+                success_msg = f"✅ Direct message sent successfully to {
+                    user.get(
+                        'username',
+                        'Unknown User')}!"
                 success_msg += f"\n- **Message ID**: `{message_id}`"
-                success_msg += f"\n- **Recipient**: {user.get('username', 'Unknown User')} (`{user_id}`)"
-                success_msg += f"\n- **Content**: {self._content_formatter.truncate_content(content, 100)}"
+                success_msg += f"\n- **Recipient**: {
+                    user.get(
+                        'username',
+                        'Unknown User')} (`{user_id}`)"
+                success_msg += f"\n- **Content**: {
+                    self._content_formatter.truncate_content(
+                        content, 100)}"
                 if timestamp:
-                    success_msg += f"\n- **Sent at**: {self._content_formatter.format_timestamp(timestamp)}"
+                    success_msg += f"\n- **Sent at**: {
+                        self._content_formatter.format_timestamp(timestamp)}"
 
                 self._log_operation_success(
                     "direct message sending",
@@ -490,7 +512,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return f"❌ Error: User `{user_id}` not found."
 
             # Use centralized user display name formatting
-            display_name = self._content_formatter.format_user_display_name(user_info)
+            display_name = self._content_formatter.format_user_display_name(
+                user_info)
 
             # Create or get existing DM channel
             try:
@@ -524,7 +547,7 @@ class DiscordService(IDiscordService, ValidationMixin):
                     bot_username = self._content_formatter.format_user_display_name(
                         bot_user
                     )
-                except:
+                except Exception:
                     bot_user_id = None
                     bot_username = "Bot"
 
@@ -537,28 +560,31 @@ class DiscordService(IDiscordService, ValidationMixin):
                     )
                     message_id = message.get("id", "Unknown")
 
-                    # Determine if it's from bot or user using centralized formatting
+                    # Determine if it's from bot or user using centralized
+                    # formatting
                     if author_id == bot_user_id:
                         sender_label = f"🤖 {bot_username} (You)"
                     elif author_id == user_id:
                         sender_label = f"👤 {display_name}"
                     else:
                         author_display = (
-                            self._content_formatter.format_user_display_name(author)
+                            self._content_formatter.format_user_display_name(
+                                author)
                         )
                         sender_label = f"❓ {author_display}"
 
                     result += f"**{i:2d}.** [{timestamp}] {sender_label}\n"
                     result += f"     Message ID: `{message_id}`\n"
 
-                    # Handle different content types using centralized truncation
+                    # Handle different content types using centralized
+                    # truncation
                     if content and content.strip():
                         formatted_content = self._content_formatter.truncate_content(
                             content, 500
                         )
                         result += f"     💬 {formatted_content}\n"
                     else:
-                        result += f"     💬 (no text content)\n"
+                        result += "     💬 (no text content)\n"
 
                     # Check for embeds
                     embeds = message.get("embeds", [])
@@ -620,7 +646,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             )
 
             # Use centralized permission validation
-            permission_error = self._validate_permissions(channel_id=channel_id)
+            permission_error = self._validate_permissions(
+                channel_id=channel_id)
             if permission_error:
                 return permission_error
 
@@ -634,7 +661,8 @@ class DiscordService(IDiscordService, ValidationMixin):
 
             # Also check guild permission if it's a guild channel
             if guild_id:
-                guild_permission_error = self._validate_permissions(guild_id=guild_id)
+                guild_permission_error = self._validate_permissions(
+                    guild_id=guild_id)
                 if guild_permission_error:
                     return self._create_permission_denied_response(
                         "guild",
@@ -649,7 +677,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 message = await self._discord_client.get_channel_message(
                     channel_id, message_id
                 )
-                message_author = message.get("author", {}).get("username", "Unknown")
+                message_author = message.get(
+                    "author", {}).get("username", "Unknown")
                 message_content = self._content_formatter.truncate_content(
                     message.get("content", ""), 50
                 )
@@ -659,7 +688,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                     return self._create_not_found_response(
                         "Message", message_id, f"in channel #{channel_name}"
                     )
-                # Continue with deletion attempt even if we can't get message details
+                # Continue with deletion attempt even if we can't get message
+                # details
 
             # Delete the message
             try:
@@ -723,7 +753,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return content_error
 
             # Use centralized permission validation
-            permission_error = self._validate_permissions(channel_id=channel_id)
+            permission_error = self._validate_permissions(
+                channel_id=channel_id)
             if permission_error:
                 return permission_error
 
@@ -737,7 +768,8 @@ class DiscordService(IDiscordService, ValidationMixin):
 
             # Also check guild permission if it's a guild channel
             if guild_id:
-                guild_permission_error = self._validate_permissions(guild_id=guild_id)
+                guild_permission_error = self._validate_permissions(
+                    guild_id=guild_id)
                 if guild_permission_error:
                     return self._create_permission_denied_response(
                         "guild",
@@ -750,7 +782,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 bot_user = await self._discord_client.get_current_user()
                 bot_user_id = bot_user["id"]
             except DiscordAPIError as e:
-                return self._handle_discord_error(e, "getting bot user information")
+                return self._handle_discord_error(
+                    e, "getting bot user information")
 
             # Get message information to verify ownership
             try:
@@ -772,11 +805,12 @@ class DiscordService(IDiscordService, ValidationMixin):
                         "Message", message_id, f"in channel #{channel_name}"
                     )
                 else:
-                    return self._handle_discord_error(e, "getting message information")
+                    return self._handle_discord_error(
+                        e, "getting message information")
 
             # Edit the message using PATCH request
             try:
-                result = await self._discord_client.patch(
+                await self._discord_client.patch(
                     f"/channels/{channel_id}/messages/{message_id}",
                     data={"content": new_content},
                 )
@@ -785,8 +819,12 @@ class DiscordService(IDiscordService, ValidationMixin):
                 success_msg = f"✅ Message edited successfully in #{channel_name}!"
                 success_msg += f"\n- **Message ID**: `{message_id}`"
                 success_msg += f"\n- **Channel**: #{channel_name} (`{channel_id}`)"
-                success_msg += f"\n- **Old Content**: {self._content_formatter.truncate_content(old_content, 50)}"
-                success_msg += f"\n- **New Content**: {self._content_formatter.truncate_content(new_content, 50)}"
+                success_msg += f"\n- **Old Content**: {
+                    self._content_formatter.truncate_content(
+                        old_content, 50)}"
+                success_msg += f"\n- **New Content**: {
+                    self._content_formatter.truncate_content(
+                        new_content, 50)}"
 
                 self._log_operation_success(
                     "message editing",
@@ -990,13 +1028,14 @@ class DiscordService(IDiscordService, ValidationMixin):
                 return self._create_permission_denied_response(
                     resource_type.lower(),
                     resource_id,
-                    f"Bot does not have permission to perform this operation.",
+                    "Bot does not have permission to perform this operation.",
                 )
             else:
                 return f"❌ Error: Bot does not have permission to perform this operation while {operation}."
         elif status_code == 404:
             if resource_type and resource_id:
-                return self._create_not_found_response(resource_type, resource_id)
+                return self._create_not_found_response(
+                    resource_type, resource_id)
             else:
                 return f"❌ Error: Resource not found while {operation}."
         elif status_code == 429:
@@ -1184,7 +1223,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                     user_id,
                     duration=f"{duration_minutes} minutes",
                     reason=reason,
-                    expires=timeout_until.strftime("%Y-%m-%d %H:%M:%S") + " UTC",
+                    expires=timeout_until.strftime(
+                        "%Y-%m-%d %H:%M:%S") + " UTC",
                 )
 
                 # Use centralized moderation logging
@@ -1218,7 +1258,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 elif e.status_code == 404:
                     return f"❌ Error: User `{user_id}` is not a member of {setup_data['guild_name']}."
                 elif e.status_code == 400:
-                    return f"❌ Error: Invalid timeout request. User may already be timed out or parameters are invalid."
+                    return ("❌ Error: Invalid timeout request. User may already "
+                            "be timed out or parameters are invalid.")
                 else:
                     return self._handle_discord_error(e, "timing out user")
 
@@ -1271,15 +1312,17 @@ class DiscordService(IDiscordService, ValidationMixin):
                     timeout_end = datetime.fromisoformat(
                         communication_disabled_until.replace("Z", "+00:00")
                     )
-                    timeout_end_str = timeout_end.strftime("%Y-%m-%d %H:%M:%S UTC")
-                except:
+                    timeout_end_str = timeout_end.strftime(
+                        "%Y-%m-%d %H:%M:%S UTC")
+                except Exception:
                     timeout_end_str = "unknown time"
 
             except DiscordAPIError as e:
                 if e.status_code == 404:
                     return f"❌ Error: User `{user_id}` is not a member of {setup_data['guild_name']}."
                 else:
-                    return self._handle_discord_error(e, "getting member information")
+                    return self._handle_discord_error(
+                        e, "getting member information")
 
             # Call Discord API to clear communication_disabled_until field
             try:
@@ -1330,7 +1373,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                 elif e.status_code == 404:
                     return f"❌ Error: User `{user_id}` is not a member of {setup_data['guild_name']}."
                 elif e.status_code == 400:
-                    return f"❌ Error: Invalid untimeout request. Parameters may be invalid."
+                    return ("❌ Error: Invalid untimeout request. Parameters may "
+                            "be invalid.")
                 else:
                     return self._handle_discord_error(e, "removing timeout")
 
@@ -1361,7 +1405,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             if setup_error:
                 return setup_error
 
-            # Use centralized moderation target validation (requires membership for kicks)
+            # Use centralized moderation target validation (requires membership
+            # for kicks)
             target_error = await self._validate_moderation_target(
                 guild_id, user_id, setup_data, require_membership=True
             )
@@ -1451,7 +1496,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             if setup_error:
                 return setup_error
 
-            # Check if user is already banned (handle already-banned user scenarios)
+            # Check if user is already banned (handle already-banned user
+            # scenarios)
             try:
                 ban_info = await self._discord_client.get(
                     f"/guilds/{guild_id}/bans/{user_id}"
@@ -1461,7 +1507,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             except DiscordAPIError as e:
                 # 404 means user is not banned, which is what we want
                 if e.status_code != 404:
-                    # Other errors might indicate permission issues, but we'll continue and let the ban attempt handle it
+                    # Other errors might indicate permission issues, but we'll
+                    # continue and let the ban attempt handle it
                     self._logger.warning(
                         "Could not check ban status",
                         guild_id=guild_id,
@@ -1469,14 +1516,16 @@ class DiscordService(IDiscordService, ValidationMixin):
                         error=str(e),
                     )
 
-            # Use centralized moderation target validation (bans don't require membership)
+            # Use centralized moderation target validation (bans don't require
+            # membership)
             target_error = await self._validate_moderation_target(
                 guild_id, user_id, setup_data, require_membership=False
             )
             if target_error:
                 return target_error
 
-            # Call Discord API ban endpoint with reason and message deletion parameters
+            # Call Discord API ban endpoint with reason and message deletion
+            # parameters
             try:
                 await self._discord_client.ban_guild_member(
                     guild_id=guild_id,
@@ -1640,9 +1689,11 @@ class DiscordService(IDiscordService, ValidationMixin):
                         target_highest_position = role["position"]
 
             # Check if bot can moderate the target user
-            # Bot must have a higher role position than the target user (higher position number = higher role)
+            # Bot must have a higher role position than the target user (higher
+            # position number = higher role)
             if bot_highest_position <= target_highest_position:
-                # Find the names of the highest roles for better error messaging
+                # Find the names of the highest roles for better error
+                # messaging
                 bot_highest_role_name = "@everyone"
                 target_highest_role_name = "@everyone"
 
@@ -1716,12 +1767,14 @@ class DiscordService(IDiscordService, ValidationMixin):
                 else:
                     formatted_value = str(value)
 
-                message_parts.append(f"- **{formatted_key}**: {formatted_value}")
+                message_parts.append(
+                    f"- **{formatted_key}**: {formatted_value}")
 
         return "\n".join(message_parts)
 
     # Centralized moderation action framework methods
-    # These methods eliminate duplicate moderation patterns across timeout, kick, and ban operations
+    # These methods eliminate duplicate moderation patterns across timeout,
+    # kick, and ban operations
     async def _perform_moderation_setup(
         self, guild_id: str, user_id: str, action_name: str
     ) -> tuple[Optional[dict], Optional[str]]:
@@ -1741,7 +1794,8 @@ class DiscordService(IDiscordService, ValidationMixin):
                    if successful, or error_message if validation failed
         """
         try:
-            self._log_operation_start(action_name, guild_id=guild_id, user_id=user_id)
+            self._log_operation_start(
+                action_name, guild_id=guild_id, user_id=user_id)
 
             # Check if guild is allowed using centralized permission validation
             permission_error = self._validate_permissions(guild_id=guild_id)
@@ -1867,7 +1921,8 @@ class DiscordService(IDiscordService, ValidationMixin):
         }
 
         # Remove success from log_data to avoid duplicate parameter
-        log_data_without_success = {k: v for k, v in log_data.items() if k != "success"}
+        log_data_without_success = {k: v for k,
+                                    v in log_data.items() if k != "success"}
 
         if success:
             self._log_operation_success(
@@ -1905,8 +1960,10 @@ class DiscordService(IDiscordService, ValidationMixin):
             str: Formatted success message
         """
         success_msg = f"✅ User {action} successfully!"
-        success_msg += f"\n- **User**: {setup_data['display_name']} (`{user_id}`)"
-        success_msg += f"\n- **Guild**: {setup_data['guild_name']} (`{guild_id}`)"
+        success_msg += f"\n- **User**: {
+            setup_data['display_name']} (`{user_id}`)"
+        success_msg += f"\n- **Guild**: {
+            setup_data['guild_name']} (`{guild_id}`)"
 
         # Add additional details in a consistent format
         for key, value in additional_details.items():
@@ -1942,7 +1999,8 @@ class DiscordService(IDiscordService, ValidationMixin):
         """
         return f"❌ Error: Bot does not have '{permission_name}' permission in {guild_name}."
 
-    def _create_moderation_hierarchy_error(self, action: str, guild_name: str) -> str:
+    def _create_moderation_hierarchy_error(
+            self, action: str, guild_name: str) -> str:
         """
         Create consistent role hierarchy error messages for moderation actions.
 
@@ -1964,7 +2022,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             operation: The name of the operation being started
             **kwargs: Additional context data to include in the log
         """
-        self._logger.info(f"Starting {operation}", operation=operation, **kwargs)
+        self._logger.info(f"Starting {operation}",
+                          operation=operation, **kwargs)
 
     def _log_operation_success(self, operation: str, **kwargs) -> None:
         """
@@ -1981,7 +2040,8 @@ class DiscordService(IDiscordService, ValidationMixin):
             **kwargs,
         )
 
-    def _log_operation_error(self, operation: str, error: Exception, **kwargs) -> None:
+    def _log_operation_error(self, operation: str,
+                             error: Exception, **kwargs) -> None:
         """
         Log an error that occurred during an operation with consistent formatting and context.
 

@@ -41,7 +41,8 @@ class IDiscordService(ABC):
         pass
 
     @abstractmethod
-    async def get_messages_formatted(self, channel_id: str, limit: int = 50) -> str:
+    async def get_messages_formatted(
+            self, channel_id: str, limit: int = 50) -> str:
         """
         Get a formatted list of recent messages from a Discord channel.
 

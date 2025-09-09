@@ -64,7 +64,8 @@ class ContentFormatter:
             guild_info.append(f"## {i}. {guild_name}")
             guild_info.append(f"- **Guild ID**: `{guild_id}`")
             guild_info.append(f"- **Members**: {member_count}")
-            guild_info.append(f"- **Bot is Owner**: {'Yes' if owner else 'No'}")
+            guild_info.append(
+                f"- **Bot is Owner**: {'Yes' if owner else 'No'}")
             guild_info.append(f"- **Permissions**: `{permissions}`")
 
             # Add features if available
@@ -132,7 +133,7 @@ class ContentFormatter:
                     truncated_topic = self.truncate_content(topic, 100)
                     channel_info.append(f"  - Topic: {truncated_topic}")
                 if nsfw:
-                    channel_info.append(f"  - 🔞 NSFW Channel")
+                    channel_info.append("  - 🔞 NSFW Channel")
 
             channel_info.append("")  # Empty line between types
 
@@ -178,7 +179,7 @@ class ContentFormatter:
                 formatted_content = self.truncate_content(content, 500)
                 message_info.append(f"     💬 {formatted_content}")
             else:
-                message_info.append(f"     💬 (no text content)")
+                message_info.append("     💬 (no text content)")
 
             # Check for embeds
             embeds = message.get("embeds", [])
@@ -240,7 +241,7 @@ class ContentFormatter:
         # Add system status
         is_system = user.get("system", False)
         if is_system:
-            user_info.append(f"- **System Account**: Yes")
+            user_info.append("- **System Account**: Yes")
 
         # Add verification status
         verified = user.get("verified")
@@ -250,7 +251,7 @@ class ContentFormatter:
         # Add avatar information
         avatar = user.get("avatar")
         if avatar:
-            user_info.append(f"- **Has Avatar**: Yes")
+            user_info.append("- **Has Avatar**: Yes")
 
         # Add account creation date if we can calculate it
         try:
@@ -261,7 +262,8 @@ class ContentFormatter:
             timestamp = ((int(user_id) >> 22) + discord_epoch) / 1000
             created_date = datetime.fromtimestamp(timestamp, tz=timezone.utc)
             user_info.append(
-                f"- **Account Created**: {created_date.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                f"- **Account Created**: {
+                    created_date.strftime('%Y-%m-%d %H:%M:%S UTC')}"
             )
         except (ValueError, TypeError):
             pass  # Skip if we can't calculate the date
@@ -285,7 +287,8 @@ class ContentFormatter:
         global_name = user.get("global_name")
         discriminator = user.get("discriminator", "0")
 
-        # Handle new Discord username system (no discriminator) vs legacy system
+        # Handle new Discord username system (no discriminator) vs legacy
+        # system
         if discriminator == "0" or discriminator == "0000":
             # New system: use global_name if available, otherwise username
             if global_name and global_name != username:
@@ -325,14 +328,15 @@ class ContentFormatter:
                 dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
             elif "+" in timestamp or timestamp.endswith("UTC"):
                 # Already has timezone info
-                dt = datetime.fromisoformat(timestamp.replace("UTC", "").strip())
+                dt = datetime.fromisoformat(
+                    timestamp.replace("UTC", "").strip())
             else:
                 # Assume UTC if no timezone info
                 dt = datetime.fromisoformat(timestamp)
 
             # Format as consistent string
             return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-        except (ValueError, AttributeError) as e:
+        except (ValueError, AttributeError):
             # Note: In a standalone ContentFormatter, we don't have access to logger
             # This preserves the exact behavior from DiscordService but without logging
             # The calling service can handle logging if needed
